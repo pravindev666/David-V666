@@ -1,9 +1,6 @@
 name: Weekly AI Model Training
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     # Runs every Saturday at 2:00 AM UTC (7:30 AM IST)
     # This ensures markets are closed and data is fully settled

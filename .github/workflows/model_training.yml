@@ -1,0 +1,86 @@
+name: Weekly AI Model Training
+
+on:
+  schedule:
+    # Runs every Saturday at 2:00 AM UTC (7:30 AM IST)
+    # This ensures markets are closed and data is fully settled
+    - cron: '0 2 * * 6'
+  workflow_dispatch: # Allows you to click "Run workflow" manually in GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  train-models:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install pandas numpy yfinance scikit-learn xgboost lightgbm catboost hmmlearn scipy
+          fi
+
+      - name: Sync Latest Data & Train Models
+        run: |
+          python -c "
+          import os
+          from data_engine import load_all_data
+          from feature_forge import engineer_features
+          from models.ensemble_classifier import EnsembleClassifier
+          from models.regime_detector import RegimeDetector
+          from models.range_predictor import RangePredictor
+
+          print('1. Syncing latest market data...')
+          df_raw = load_all_data()
+
+          print('2. Engineering features...')
+          df, feature_cols = engineer_features(df_raw)
+
+          print('3. Training Ensemble Classifier...')
+          ensemble = EnsembleClassifier()
+          ensemble.train(df, feature_cols)
+          ensemble.save()
+
+          print('4. Training Regime Detector...')
+          regime = RegimeDetector()
+          regime.train(df)
+          regime.save()
+
+          print('5. Training Range Predictor...')
+          rp = RangePredictor()
+          rp.train(df)
+          rp.save()
+
+          print('Training Complete!')
+          "
+
+      - name: Commit and Push Updated Models
+        run: |
+          git config --global user.name "David AI Bot"
+          git config --global user.email "bot@david-ml.com"
+          
+          # Stage the updated CSVs and PKL files
+          git add data/*.csv
+          git add saved_models/*.pkl
+          
+          # Only commit if models actually changed
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-train: Weekly ML Model Update $(date +'%Y-%m-%d')"
+            git push
+          fi

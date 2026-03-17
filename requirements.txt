@@ -1,0 +1,9 @@
+pandas
+numpy
+yfinance
+scikit-learn
+xgboost
+lightgbm
+catboost
+hmmlearn
+scipy

@@ -1,0 +1,57 @@
+name: Market Data Sync
+
+on:
+  schedule:
+    # Runs every 15 minutes from 3:15 UTC to 11:30 UTC (8:45 IST to 5:00 PM IST)
+    # Monday through Friday
+    - cron: '*/15 3-11 * * 1-5'
+  workflow_dispatch: # Allows manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  sync-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install pandas numpy yfinance scikit-learn xgboost lightgbm catboost hmmlearn scipy
+          fi
+
+      - name: Run Data Sync Script
+        run: |
+          # The script is now at the root of the repository
+          python data_engine.py
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "David Data Bot"
+          git config --global user.email "bot@david-ml.com"
+          
+          # Stage the updated CSV files
+          # data folder is now at the root of the repository
+          git add data/*.csv
+          
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-sync: Market data update $(date +'%Y-%m-%d %H:%M')"
+            git push
+          fi

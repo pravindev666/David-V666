@@ -19,7 +19,7 @@ from models.range_predictor import RangePredictor
 from models.sr_engine import SREngine
 from analyzers.whipsaw_detector import WhipsawDetector
 from analyzers.iron_condor_analyzer import IronCondorAnalyzer
-from analyzers.strike_backtester import full_strike_analysis, get_survival_history, regime_conditional_survival
+from analyzers.strike_backtester import full_strike_analysis, get_survival_history, regime_conditional_survival, _classify_regime
 from analyzers.bounce_analyzer import BounceAnalyzer
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -506,6 +506,16 @@ def render_eligibility_card(direction, confidence, regime_label, chop_prob):
 """
 def render_setup_radar(regime, chop_prob, direction, confidence, spot, trust_score):
     """Detect 'Super-Matrix' setups and return rich UI metadata."""
+    if direction == SIDEWAYS:
+        return f"""<div style="background: #33333340; border-left: 4px solid #666; padding: 15px; border-radius: 4px; margin: 15px 0;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+<span style="color:#666; font-weight:900; font-size:11px; letter-spacing:1.5px;">EDGE DETECTOR</span>
+<span>🛑</span>
+</div>
+<div style="color:#FFF; font-size:18px; font-weight:900; margin-bottom:12px;">NO DIRECTIONAL EDGE</div>
+<div style="color:#AAA; font-size:13px; line-height:1.5;">AI predicts SIDEWAYS. No statistical edge for directional credit spreads.<br>Wait for a clear UP/DOWN signal or consider Delta-Neutral strategies.</div>
+</div>"""
+
     conf_pct = confidence * 100
     is_clear = chop_prob <= 35
     is_high = conf_pct >= 50   # Lowered from 55% → 50% for more honest trades
@@ -531,7 +541,7 @@ def render_setup_radar(regime, chop_prob, direction, confidence, spot, trust_sco
     if "TRENDING" in regime and is_clear and is_high and is_trust_a:
         active_setup = "🏆 GOD MODE"
         active_meta = {
-            "color": "#00FF7F", "icon": "🏆", "profit": "₹69,096", "win": "100%", "freq": "~6/yr",
+            "color": "#00FF7F", "icon": "🏆", "profit": "₹57,961", "win": "100%", "freq": "~6/yr",
             "rec": f"SELL {direction} Spread at {spot* (0.975 if direction==UP else 1.025):,.0f}",
             "spread": "Bull Put" if direction == UP else "Bear Call"
         }
@@ -539,7 +549,7 @@ def render_setup_radar(regime, chop_prob, direction, confidence, spot, trust_sco
     elif "VOLATILE" in regime and is_clear and is_high and is_trust_b:
         active_setup = "🚀 AGGRESSIVE"
         active_meta = {
-            "color": "#00C8FF", "icon": "🚀", "profit": "₹30,048", "win": "100%", "freq": "~16/yr",
+            "color": "#00C8FF", "icon": "🚀", "profit": "₹36,351", "win": "100%", "freq": "~14/yr",
             "rec": f"SELL {direction} Spread (3% OTM) @ {spot* (0.97 if direction==UP else 1.03):,.0f}",
             "spread": "Bull Put" if direction == UP else "Bear Call"
         }
@@ -547,7 +557,7 @@ def render_setup_radar(regime, chop_prob, direction, confidence, spot, trust_sco
     elif "CALM" in regime and is_high and is_trust_b:
         active_setup = "🛡️ SAFE / CALM"
         active_meta = {
-            "color": "#7CFC00", "icon": "🛡️", "profit": "₹22,951", "win": "100%", "freq": "~40/yr",
+            "color": "#7CFC00", "icon": "🛡️", "profit": "₹21,099", "win": "100%", "freq": "~25/yr",
             "rec": f"SELL {direction} Spread (2% OTM) @ {spot* (0.98 if direction==UP else 1.02):,.0f}",
             "spread": "Bull Put" if direction == UP else "Bear Call"
         }
@@ -555,7 +565,7 @@ def render_setup_radar(regime, chop_prob, direction, confidence, spot, trust_sco
     elif "SIDEWAYS" in regime and is_clear and is_high and is_trust_b:
         active_setup = "🥦 BREAD & BUTTER"
         active_meta = {
-            "color": "#FFD700", "icon": "🥦", "profit": "₹26,543", "win": "100%", "freq": "~166/yr",
+            "color": "#FFD700", "icon": "🥦", "profit": "₹25,544", "win": "100%", "freq": "~250/yr",
             "rec": f"SELL {direction} Spread (1.5% OTM) @ {spot* (0.985 if direction==UP else 1.015):,.0f}",
             "spread": "Bull Put" if direction == UP else "Bear Call"
         }
@@ -563,7 +573,7 @@ def render_setup_radar(regime, chop_prob, direction, confidence, spot, trust_sco
     elif "SIDEWAYS" in regime and not is_clear and is_high and is_trust_b:
         active_setup = "🔄 STEADY"
         active_meta = {
-            "color": "#B8860B", "icon": "🔄", "profit": "₹25,082", "win": "100%", "freq": "~55/yr",
+            "color": "#B8860B", "icon": "🔄", "profit": "₹22,679", "win": "100%", "freq": "~63/yr",
             "rec": f"SELL {direction} Spread (2% OTM, half size) @ {spot* (0.98 if direction==UP else 1.02):,.0f}",
             "spread": "Bull Put" if direction == UP else "Bear Call"
         }
@@ -571,7 +581,7 @@ def render_setup_radar(regime, chop_prob, direction, confidence, spot, trust_sco
     elif is_med and not is_high:
         active_setup = "🤏 SCALP"
         active_meta = {
-            "color": "#AAA", "icon": "🤏", "profit": "~₹14,000", "win": "~100%", "freq": "Daily",
+            "color": "#AAA", "icon": "🤏", "profit": "~₹14,000", "win": "~85%", "freq": "Daily",
             "rec": "Quick in-out. Sell 1% OTM.",
             "spread": "Credit Spread"
         }
@@ -755,7 +765,8 @@ with st.sidebar:
     # Edge Radar in Sidebar
     # We need to run a mini-predict to get the data for the radar
     pred_sidebar = oracle["ensemble"].predict_today(oracle["df"])
-    regime_sidebar = oracle["regime"].get_regime_with_micro_direction(oracle["df"], pred_sidebar)["regime"]
+    hmm_regime_sidebar = oracle["regime"].get_regime_with_micro_direction(oracle["df"], pred_sidebar)["regime"]
+    structural_regime_sidebar = _classify_regime(oracle["df"].iloc[-1])
     whipsaw_sidebar = oracle["whipsaw"].analyze(oracle["df"])["whipsaw_prob"]
     
     # Get a dummy strike for trust score calculation (2% OTM)
@@ -775,7 +786,7 @@ with st.sidebar:
             pass
 
     st.markdown(render_setup_radar(
-        regime_sidebar, 
+        structural_regime_sidebar, 
         whipsaw_sidebar, 
         pred_sidebar["direction"], 
         pred_sidebar["confidence"],

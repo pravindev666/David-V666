@@ -10,7 +10,7 @@ import sys
 # Ensure imports work from this directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from utils import C, UP, DOWN, SIDEWAYS, NIFTY_SYMBOL
+from utils import C, UP, DOWN, SIDEWAYS, NIFTY_SYMBOL, MODEL_DIR
 from data_engine import load_all_data
 from feature_forge import engineer_features
 from models.ensemble_classifier import EnsembleClassifier
@@ -298,22 +298,55 @@ letter-spacing: 1px;
 
 @st.cache_resource
 def load_oracle():
-    """Load data and models once."""
+    """Load data and models once. Self-healing: if pkl files are incompatible, retrain."""
     df_raw = load_all_data()
     df, features = engineer_features(df_raw)
 
+    # --- Ensemble Classifier ---
     ensemble = EnsembleClassifier()
-    if not ensemble.load():
+    try:
+        if not ensemble.load():
+            ensemble.train(df, features)
+            ensemble.save()
+    except Exception as e:
+        print(f"  [WARN] Ensemble pkl incompatible ({e}), retraining...")
+        import os as _os
+        pkl_path = _os.path.join(MODEL_DIR, "ensemble_classifier.pkl")
+        if _os.path.exists(pkl_path):
+            _os.remove(pkl_path)
+        ensemble = EnsembleClassifier()
         ensemble.train(df, features)
         ensemble.save()
 
+    # --- Regime Detector ---
     regime = RegimeDetector()
-    if not regime.load():
+    try:
+        if not regime.load():
+            regime.train(df)
+            regime.save()
+    except Exception as e:
+        print(f"  [WARN] Regime pkl incompatible ({e}), retraining...")
+        import os as _os
+        pkl_path = _os.path.join(MODEL_DIR, "regime_detector.pkl")
+        if _os.path.exists(pkl_path):
+            _os.remove(pkl_path)
+        regime = RegimeDetector()
         regime.train(df)
         regime.save()
 
+    # --- Range Predictor ---
     range_pred = RangePredictor()
-    if not range_pred.load():
+    try:
+        if not range_pred.load():
+            range_pred.train(df, features)
+            range_pred.save()
+    except Exception as e:
+        print(f"  [WARN] Range pkl incompatible ({e}), retraining...")
+        import os as _os
+        pkl_path = _os.path.join(MODEL_DIR, "range_predictor.pkl")
+        if _os.path.exists(pkl_path):
+            _os.remove(pkl_path)
+        range_pred = RangePredictor()
         range_pred.train(df, features)
         range_pred.save()
 
@@ -775,7 +808,7 @@ with st.sidebar:
         """)
         
     st.markdown("---")
-    if st.button("🔄 Get Live Market Data", use_container_width=True):
+    if st.button("🔄 Get Live Market Data", width="stretch"):
         with st.spinner("Fetching latest data and running predictions..."):
             st.cache_resource.clear()
         st.success("Data synced! Reloading...")
@@ -849,7 +882,7 @@ if mode == "🎯 Dashboard":
             plot_bgcolor='rgba(0,0,0,0)',
             font={'color': '#FAFAFA', 'family': 'Inter'}
         )
-        st.plotly_chart(fig, use_container_width=True, key="gauge")
+        st.plotly_chart(fig, width="stretch", key="gauge")
 
     with col2:
         # Regime indicator
@@ -1038,7 +1071,7 @@ elif mode == "📈 Forecast & Ranges":
                     font={'family': 'Inter'},
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                 )
-                st.plotly_chart(fig, use_container_width=True, key=f"cone_{horizon}")
+                st.plotly_chart(fig, width="stretch", key=f"cone_{horizon}")
 
                 # Metric cards
                 c1, c2, c3, c4, c5 = st.columns(5)
@@ -1228,7 +1261,7 @@ elif mode == "🎯 Strike Recommender":
             plot_bgcolor='rgba(0,0,0,0)',
             font={'color': '#FAFAFA', 'family': 'Inter'}
         )
-        st.plotly_chart(fig_trust, use_container_width=True, key="trust_gauge")
+        st.plotly_chart(fig_trust, width="stretch", key="trust_gauge")
 
         # Component breakdown
         st.markdown(f"""
@@ -1401,7 +1434,7 @@ elif mode == "🎯 Strike Recommender":
             font={'family': 'Inter'},
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
-        st.plotly_chart(fig_surv, use_container_width=True, key="survival_chart")
+        st.plotly_chart(fig_surv, width="stretch", key="survival_chart")
 
     # ── ROW 4: Regime Breakdown ──
     regime_data = analysis.get("regime_data", {})
@@ -1469,7 +1502,7 @@ elif mode == "🧪 Strategy Lab":
     with ic_col2:
         days = st.slider("Timeframe (Days)", 1, 30, 5, key="ic_days")
 
-    if st.button("🔍 Analyze Strike", use_container_width=True, key="ic_btn"):
+    if st.button("🔍 Analyze Strike", width="stretch", key="ic_btn"):
         res = oracle["condor"].analyze_strike(oracle["df_raw"], strike, days)
         tp = res['touch_prob']
         rp = res['recovery_prob']
@@ -1545,7 +1578,7 @@ elif mode == "🧪 Strategy Lab":
     with ff_col2:
         target = st.number_input("What is your challenged Strike Price?", value=int(round(current_price / 100) * 100) - 500 if "Bull" in spread_type else int(round(current_price / 100) * 100) + 500, step=100, key="bounce_target")
 
-    if st.button("🔥 Calculate Rescue Odds", use_container_width=True, key="bounce_btn"):
+    if st.button("🔥 Calculate Rescue Odds", width="stretch", key="bounce_btn"):
         # 1. Get History
         res = oracle["bounce"].analyze(oracle["df_raw"], target)
         dist = res['distance_pct']

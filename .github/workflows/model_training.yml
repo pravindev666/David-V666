@@ -36,37 +36,7 @@ jobs:
 
       - name: Sync Latest Data & Train Models
         run: |
-          python -c "
-          import os
-          from data_engine import load_all_data
-          from feature_forge import engineer_features
-          from models.ensemble_classifier import EnsembleClassifier
-          from models.regime_detector import RegimeDetector
-          from models.range_predictor import RangePredictor
-
-          print('1. Syncing latest market data...')
-          df_raw = load_all_data()
-
-          print('2. Engineering features...')
-          df, feature_cols = engineer_features(df_raw)
-
-          print('3. Training Ensemble Classifier...')
-          ensemble = EnsembleClassifier()
-          ensemble.train(df, feature_cols)
-          ensemble.save()
-
-          print('4. Training Regime Detector...')
-          regime = RegimeDetector()
-          regime.train(df)
-          regime.save()
-
-          print('5. Training Range Predictor...')
-          rp = RangePredictor()
-          rp.train(df, feature_cols)
-          rp.save()
-
-          print('Training Complete!')
-          "
+          python train_models.py
 
       - name: Commit and Push Updated Models
         run: |

@@ -62,7 +62,7 @@ jobs:
 
           print('5. Training Range Predictor...')
           rp = RangePredictor()
-          rp.train(df)
+          rp.train(df, feature_cols)
           rp.save()
 
           print('Training Complete!')

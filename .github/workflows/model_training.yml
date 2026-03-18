@@ -56,10 +56,11 @@ jobs:
           git config --global user.name "David AI Bot"
           git config --global user.email "bot@david-ml.com"
 
-          git add data/*.csv
-          git add saved_models/*.pkl
-          git add saved_models/*.pt
-          git add saved_models/last_trained.txt
+          git add -f data/*.csv
+          git add -f saved_models/*.pkl
+          git add -f saved_models/*.pt || true
+          git add -f saved_models/last_trained.txt
+          git add -f saved_models/train_metadata.json || true
 
           if git diff --staged --quiet; then
             echo "No model changes to commit"

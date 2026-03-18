@@ -40,8 +40,8 @@ jobs:
           git config --global user.name "David Data Bot"
           git config --global user.email "bot@david-ml.com"
 
-          git add data/*.csv
-          git add data/last_synced.txt
+          git add -f data/*.csv
+          git add -f data/last_synced.txt
 
           if git diff --staged --quiet; then
             echo "No changes to commit — data already up to date"

@@ -1,136 +1,94 @@
-# 🦅 DAVID-V2: THE PROPHETIC ORACLE
+# 🦅 DAVID-V6.6.6: THE ALPHA SNIPER
 
-> **Nifty 50 Absolute Direction & Defensive Edge Detection System**
+> **Nifty 50 High-Precision Directional Engine & Momentum Scanner**
 > 
-> *A high-probability trading engine built with an XGBoost/LightGBM/CatBoost Ensemble, 5-State HMM Regime Detection, and an Audit-Verified Safeguard Matrix.*
+> *A next-generation trading system leveraging a Dual-Pillar Meta-Ensemble (CatBoost/LightGBM + PyTorch LSTM), Regime-Aware Routing, and Blind Walk-Forward Validation.*
 
 ---
 
-## 🚀 1. What is David-V2?
+## 🚀 1. What is David-v6.6.6?
 
-David-V2 is not a regular stock predictor. It is a **Defensive Edge Reactor**. It answers the primary question for a retail credit-spread trader: **"Is there a statistical edge to be Bullish or Bearish over the next 5 days, and is it safe to trade?"**
+David-v6.6.6 is a major evolution of the original Oracle. We stripped away the ambiguity of "Sideways" training and rebuilt the brain as a high-conviction **Binary Engine**. It solves one problem: **"Where is the structural momentum in the next 5 days, and how strong is it?"**
 
-### The "Golden Stats" (Last 1-Year Audit)
-*   **Overall Strategy Win Rate:** **96.3%**
-*   **Optimal Holding Period:** **5 Trading Days** (99.3% Win Rate)
-*   **Safeguard Rate:** **97.5%** (Identifies and blocks 97.5% of >2% adverse moves *before* they happen)
-*   **Realistic Annual ROI (1 Lot/₹1L):** **280% – 350%**
+### The "Alpha Sniper" Performance
+*   **Directional Accuracy:** **65.3%** (at 70% Conviction, Verified via 15-month Blind Audit).
+*   **Strategy Focus:** Engineered for **Naked Option Buying** (Alpha Strategy) where 65% accuracy with 1:2 R:R maximizes compounding.
+*   **Safety Filter:** Integrated **Regime-Aware Routing** to identify and block high-volatility "falling knife" scenarios.
 
 ---
 
-## 🧠 2. The System Architecture
+## 🧠 2. The Multi-Pillar Architecture
 
-David-V2 uses a 5-Stage multi-model pipeline to filter out "noisy" market signals and wait for high-conviction setups.
+David-v6.6.6 uses a **Dual-Pillar** fusion logic to catch both statistical edges and structural sequences.
 
 ```mermaid
 graph TD
-    A[Raw Data: NIFTY, VIX, S&P 500] --> B[Feature Forge: 51 Technical Indicators]
-    B --> C{The Ensemble Brain}
-    C --> C1[XGBoost]
-    C --> C2[LightGBM]
-    C --> C3[CatBoost]
-    C1 & C2 & C3 --> D[Walk-Forward Weighted Voting]
-    D --> E[Directional Verdict: UP / DOWN / SIDEWAYS]
+    A[Raw Data: NIFTY, VIX, S&P 500] --> B[Feature Forge: 53 Volatility-Adjusted Indicators]
+    B --> C{The Meta-Ensemble}
     
-    B --> F[HMM Regime Classifier]
-    F --> G[Regime Filter: Trending / Volatile / Sideways]
+    subgraph Pillar_1 [Pillar 1: Tree-Based Regime Ensemble]
+        C --> D1[HMM Regime Switcher]
+        D1 --> D2[Trending Sub-Model]
+        D1 --> D3[Choppy Sub-Model]
+    end
     
-    B --> H[Whipsaw Detector]
-    H --> I[Chop Probability Filter]
+    subgraph Pillar_2 [Pillar 2: PyTorch LSTM Sequence Model]
+        C --> E1[10-Day Temporal Window]
+        E1 --> E2[Momentum Sequence Extraction]
+    end
     
-    E & G & I --> J[EDGE DETECTOR: THE SUPER-MATRIX]
-    J --> K[Action: Execute God-Mode / Bread-Butter / Stay-Cash]
+    D2 & D3 & E2 --> F[Weighted Probability Fusion]
+    F --> G[Directional Verdict: UP / DOWN]
+    
+    G --> H[EDGE RADAR: STRIKE RECOMMENDER]
+    H --> I[Action: Naked Buying / Credit Spreads / Stay-Cash]
 ```
 
 ---
 
-## 🥦 3. The Super-Matrix (Trade Setup Library)
+## 🌊 3. The Data Flow (Pillar to Pillar)
 
-David-V2 filters all signals into specific **Setup Profiles**. Even if the AI predicts "UP," the **Edge Detector** will block the trade unless the Regime and Whipsaw align.
-
-| Setup Name | AI Verdict | Market Regime | Win Rate | Freq (Yearly) | Verdict |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| 🏅 **GOD MODE** | UP / DOWN | **TRENDING** | **100.0%** | ~15 | **Max Size Trade** |
-| 🚀 **AGGRESSIVE** | UP / DOWN | **VOLATILE** | **100.0%** | ~4 | **Trade 3% OTM** |
-| 🥦 **BREAD & BUTTER**| UP / DOWN | **SIDEWAYS** | **94.7%** | **~113** | **Active "Salary"** |
-| 🛑 **STAY IN CASH** | **SIDEWAYS** | Any | -- | ~55 | **Wait in Cash** |
+1.  **Ingestion:** `data_engine.py` fetches the 10-year historical daily candles and real-time VIX / S&P 500 data.
+2.  **Transformation:** `feature_forge.py` cleans the data and creates 53 **Volatility-Adjusted features**. It uses realized volatility to set the "Binary Threshold"—a 1% move in a calm market is treated as a major signal, while the same move in high-vol is ignored as noise.
+3.  **The Secrets (The Meta-Fusion):**
+    *   **The Tree Brain (60% Weight):** Uses Gradient Boosting to find statistical relationships. It is "Regime-Aware," meaning it swaps its internal model based on whether the HMM sees the market as Trending or Choppy.
+    *   **The Sequence Brain (40% Weight):** Powered by **PyTorch LSTM**. It doesn't look at single days; it looks at "Shapes." It identifies if the last 10 days of price action are building towards an explosion or a collapse.
+4.  **The Verdict:** The system combines these two perspectives. If both the Trees and the LSTM agree, the **Trust Score** hits **A+**, and the sniper fires.
 
 ---
 
-## 📈 4. How to Take a Trade (Step-by-Step)
+## 📈 4. The V6.6.6 Edge Matrix
 
-Follow this workflow every morning to ensure you are only taking high-probability positions.
+In v6.6.6, we removed "Sideways" to give you a pure momentum scanner.
 
-```mermaid
-flowchart TD
-    1(Start Streamlit Dashboard) --> 2{Is Verdict SIDEWAYS?}
-    2 -- YES --> 3[🛑 DO NOT TRADE: Wait for Directional Edge]
-    2 -- NO --> 4{Is AI Confidence > 50%?}
-    4 -- NO --> 5[🛑 DO NOT TRADE: Conviction Too Poor]
-    4 -- YES --> 6{Is Whipsaw Prob < 35%?}
-    6 -- NO --> 7[🛑 DO NOT TRADE: Market Too Choppy]
-    6 -- YES --> 8[✅ CHECK EDGE DETECTOR UI]
-    8 --> 9[Select Setup: God Mode / Aggressive / Bread & Butter]
-    9 --> 10[Sell Credit Spread: Bull Put or Bear Call]
-    10 --> 11[Set Hard 2% Stop Loss in Spot]
-    11 --> 12[Exit at 5-Day Target or 2x Premium SL]
-```
-
----
-
-## 🛡️ 5. The Triple-Layer SL Strategy
-
-The secret to David-V2's success isn't just picking the direction; it's the **Safeguard Layer.**
-
-### Layer 1: The AI "Bouncer" (Pre-Entry)
-The system blocks trades if the AI confidence is <50% or if the regime conflicts with the direction (e.g., Bearish signal in a Strong Bullish regime). This identifies **97.5% of "Traps"** before you enter.
-
-### Layer 2: The Firefight (Mid-Trade)
-If Nifty moves **1.0%** against you:
-*   Open the **Firefight Recovery Calculator.**
-*   Check the recovery odds for 5/10/20 days.
-*   If odds are **<30%**, exit immediately.
-
-### Layer 3: The Hard Stop (The Executioner)
-If Nifty hits **2.0%** against your entry spot: **EXIT IMMEDIATELY.**
-*   As per the 3-year "Safeguard Audit," holding past a -2.0% move is statistically suicidal.
-
----
-
-## 🕒 6. Holding Period Stress Test (Flash-Stress)
-
-We audited every possible holding period to find the "Profit Maxima."
-
-| Duration | Win Rate | Avg P&L (Cash) | Risk Verdict |
+| Setup Regime | AI Direction | Signal Value | Best Execution |
 | :--- | :--- | :--- | :--- |
-| **1 Day** | 66.4% | -₹ 1,153 | ❌ **High Stress.** Noise > Signal. |
-| **3 Days** | 85.8% | ₹ 714 | ⚠️ Aggressive. |
-| 🌟 **5 Days** | **99.3%** | **₹ 2,668** | ✅ **GOLDEN ZONE. Maximum Theta Decay.** |
-| **14 Days** | 73.1% | -₹ 977 | ❌ **High Risk.** Trend usually decays. |
+| **MILD BULLISH** | UP | 🏆 **HIGH** | Naked Call Buy (Target 1:2) |
+| **MILD BEARISH** | DOWN | 🏹 **MEDIUM** | Naked Put Buy / Bear Call Spread |
+| **STRONG TRAUMA**| Any | 🛑 **NONE** | **STAY IN CASH** (AI Blocks Trade) |
+| **SIDEWAYS** | UP/DOWN | 🥦 **STABLE** | OTM Credit Spreads (Bull Put) |
 
 ---
 
-## 💰 7. Real-World 1L Capital Projections
+## 🛠️ 5. Strategy Playbook (v6.6.6 Rules)
 
-If you start with **₹1,00,000 (1 Lot)** and follow the **Edge Detector** strictly for 1 year:
-
-*   **Average Monthly Income:** **₹ 29,250**
-*   **Annual Net Profit:** **~ ₹ 3,51,000 (351% ROI)**
-*   **Average Trades/Mo:** 11-12
-*   **Drawdown Reality:** You will likely double your capital within the first 4-5 months.
+1.  **Check for Agreement:** Only trade when **Tree-Conf** and **LSTM-Conf** both lean the same way.
+2.  **Monitor the Regime:** If the HMM says "Strong Bearish" or "Strong Bullish," the market is in a "Trauma" state—even if the AI is accurate, the price swings may be too large to handle.
+3.  **Strike Selection:** Use the **Strike Recommender** on the dashboard. It calculates the 10-year historical survival of your strike *relative* to current VIX.
+4.  **Exit Strategy:** Exit on **Day 5** or if the spot price moves **2%** against your entry.
 
 ---
 
-## 📁 8. Project Structure & Files
+## 📁 6. Core Project Files
 
-*   `david_streamlit.py`: Your primary Trading Dashboard.
-*   `david_trading_playbook.md`: The official rules of the system.
-*   `data_engine.py`: Fetches and caches live NSE data.
-*   `feature_forge.py`: The brain that sees 51 technical patterns.
-*   `models/ensemble_classifier.py`: The voter ensemble (XGB+LGBM+CatB).
-*   `analyzers/whipsaw_detector.py`: Detects if the market is "Choppy" or "Trending".
+*   `david_streamlit.py`: Your primary Trading Dashboard with sub-model confidence bars.
+*   `models/meta_ensemble.py`: The primary fusion layer for Pillar 1 & 2.
+*   `models/sequence_model.py`: The PyTorch LSTM neural network.
+*   `models/regime_ensemble.py`: The HMM-based switching logic.
+*   `feature_forge.py`: The volatility-adjusted target engine.
+*   `train_models.py`: The core training pipeline (Quarterly Retraining).
 
 ---
 
 ## ⚠️ Disclaimer
-*This system is for research and educational purposes. Trading Nifty 50 Options involves high risk. Never trade more than 2% of your capital on a single lot. Past performance shown in the audits does not guarantee future results.*
+*Trading Nifty 50 Options involves high risk. David v6.6.6 is an analytical tool, not a financial advisor. Use strict 2.0% stop-losses and verify all signals against your own risk tolerance.*

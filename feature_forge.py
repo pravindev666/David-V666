@@ -187,8 +187,9 @@ def engineer_features(df, target_horizon=5):
     # ═══════════════════════════════════════════════════════════════════════
     # 8. CALENDAR (3 features)
     # ═══════════════════════════════════════════════════════════════════════
-    df["day_of_week"] = df["date"].dt.dayofweek / 4.0
-    df["month"] = df["date"].dt.month / 12.0
+    date_series = df["date"] if "date" in df.columns else pd.Series(df.index, index=df.index)
+    df["day_of_week"] = date_series.dt.dayofweek / 4.0
+    df["month"] = date_series.dt.month / 12.0
     
     # ... (skipping some logic for brevity in replace, but ensuring it matches)
 
@@ -245,7 +246,8 @@ def engineer_features(df, target_horizon=5):
     
     # Drop rows with NaN in CORE features (warmup period + targets)
     df = df.dropna(subset=["returns_1d", "rsi_14", "target_binary"])
-    df = df.reset_index(drop=True)
+    # Preserve original date index for cutoff/merging logic
+    # df = df.reset_index(drop=True) 
     
     # Final cleanup
     df[feature_cols] = df[feature_cols].replace([np.inf, -np.inf], np.nan).fillna(0)

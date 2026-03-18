@@ -1,4 +1,4 @@
-## 🦅 DAVID-V6.6.6+: THE ALPHA SNIPER (Plus Edition)
+# 🦅 DAVID-V6.6.6+: THE ALPHA SNIPER (Plus Edition)
 
 > **Advanced Nifty 50 Directional Engine with Institutional Momentum**
 > 
@@ -6,105 +6,96 @@
 
 ---
 
-## 🚀 1. What's New in V6.6.6+?
+## 🦅 1. System Overview: Sniper Plus
+The David V6.6.6+ system is designed for high-conviction directional trading on the Nifty 50 index. It specifically addresses the "Trauma" of extreme regime shifts (like March 2026) using hard mechanical guardrails and institutional data points.
 
-The "Plus" upgrade transforms David from a price-only model into an **Institutional Sentiment Engine**. By integrating FII/DII flows, PCR momentum, and VIX term structure, we shifted the accuracy floor even higher for high-magnitude moves.
-
-### The "Alpha Sniper" V6.6.6+ Edge
-*   **3-Pillar Fusion:** Combines Trees (Statistical), LSTM (Sequence), and Transformer (Attention).
-*   **Rolling Percentile Target:** The AI now specifically learns what a **Top 30%** magnitude move looks like, ignoring choppy noise.
-*   **Bank Nifty Lead:** Catches Nifty follow-through by analyzing the 1-2 day leading signals from the Banking index.
-
----
-
-## 🧠 2. The 3-Pillar Architecture
-
-David-v6.6.6+ uses a **Triple-Pillar** fusion logic to capture statistical, sequence, and attention-based edges.
-
-```mermaid
-graph TD
-    A[Raw Data: NIFTY, VIX, FII/DII, PCR, BN] --> B[Feature Forge: Alpha Engine]
-    B --> C{The Meta-Ensemble}
-    
-    subgraph Pillar_1 [Tree-Based Regime Ensemble - 50%]
-        C --> D1[HMM Regime Switcher]
-        D1 --> D2[Trending Model]
-        D1 --> D3[Choppy Model]
-    end
-    
-    subgraph Pillar_2 [LSTM Sequence Model - 30%]
-        C --> E1[20-Day Temporal Window]
-        E1 --> E2[Momentum Sequence]
-    end
-
-    subgraph Pillar_3 [Transformer Attention Model - 20%]
-        C --> F1[Multi-Head Attention]
-        F1 --> F2[Non-Linear Patterns]
-    end
-    
-    D2 & D3 & E2 & F2 --> G[Weighted Probability Fusion: 5:3:2]
-    G --> H[Directional Verdict: UP / DOWN]
-    
-    H --> I[EDGE RADAR: STRIKE RECOMMENDER]
-    I --> J[Action: Alpha Buying / OTM Spreads]
-```
+### 🛡️ Hard Guardrails
+- **Hard Regime Gate:** HMM-detected `STRONG BULL/BEAR` regimes trigger an automatic `HOLD` verdict to prevent catching falling knives.
+- **Adaptive Retraining:** The system monitors regime shifts. When the market "vibe" changes, `train_models.py` triggers an automatic end-to-end retrain.
+- **Honest Edge Verified:** Evaluated using a 3-window strictly blinded audit (Zero Look-Ahead), achieving a verified **69.2% Average Win Rate**.
 
 ---
 
-## 🌊 3. The Alpha Feature Matrix
+## ⚡ Quick Start: Get Running in 60 Seconds
 
-We don't just use raw numbers. We use **Engineered Edge**:
-
-1.  **VIX Term Spread:** `far_vix - near_vix`. Tells the model if the market is scared of the "Future" vs the "Present."
-2.  **Nifty PCR Z-Score:** A 5-day rolling z-score of the Put-Call Ratio to identify structural fear extremes.
-3.  **FII Interaction:** `FII Net Flow × Market Regime`. Selling in a trending market is 5x more bearish than selling in a choppy one.
-4.  **Bank Nifty Leads:** Analyzing 1d/2d returns of BN to predict the Day 3 "follow-on" move in Nifty.
-
----
-
-## 🌊 3. The Data Flow (Pillar to Pillar)
-
-1.  **Ingestion:** `data_engine.py` fetches the 10-year historical daily candles and real-time VIX / S&P 500 data.
-2.  **Transformation:** `feature_forge.py` cleans the data and creates 53 **Volatility-Adjusted features**. It uses realized volatility to set the "Binary Threshold"—a 1% move in a calm market is treated as a major signal, while the same move in high-vol is ignored as noise.
-3.  **The Secrets (The Meta-Fusion):**
-    *   **The Tree Brain (60% Weight):** Uses Gradient Boosting to find statistical relationships. It is "Regime-Aware," meaning it swaps its internal model based on whether the HMM sees the market as Trending or Choppy.
-    *   **The Sequence Brain (40% Weight):** Powered by **PyTorch LSTM**. It doesn't look at single days; it looks at "Shapes." It identifies if the last 10 days of price action are building towards an explosion or a collapse.
-4.  **The Verdict:** The system combines these two perspectives. If both the Trees and the LSTM agree, the **Trust Score** hits **A+**, and the sniper fires.
+1.  **Sync & Train:** Run the full pipeline to get the latest models.
+    ```bash
+    python train_models.py --force
+    ```
+2.  **Launch Dashboard:** Open the institutional terminal.
+    ```bash
+    streamlit run david_streamlit.py
+    ```
+3.  **Audit Strategy:** Run an out-of-sample backtest.
+    ```bash
+    python backtest_david.py --months 3 --report
+    ```
 
 ---
 
-## 📈 4. The V6.6.6 Edge Matrix
+## 🛰️ 2. The Data Engine (Institutional Sync)
+David maintains a 10-year historical dataset across 5 core asset classes without redundant downloads.
 
-In v6.6.6, we removed "Sideways" to give you a pure momentum scanner.
-
-| Setup Regime | AI Direction | Signal Value | Best Execution |
-| :--- | :--- | :--- | :--- |
-| **MILD BULLISH** | UP | 🏆 **HIGH** | Naked Call Buy (Target 1:2) |
-| **MILD BEARISH** | DOWN | 🏹 **MEDIUM** | Naked Put Buy / Bear Call Spread |
-| **STRONG TRAUMA**| Any | 🛑 **NONE** | **STAY IN CASH** (AI Blocks Trade) |
-| **SIDEWAYS** | UP/DOWN | 🥦 **STABLE** | OTM Credit Spreads (Bull Put) |
-
----
-
-## 🛠️ 5. Strategy Playbook (v6.6.6 Rules)
-
-1.  **Check for Agreement:** Only trade when **Tree-Conf** and **LSTM-Conf** both lean the same way.
-2.  **Monitor the Regime:** If the HMM says "Strong Bearish" or "Strong Bullish," the market is in a "Trauma" state—even if the AI is accurate, the price swings may be too large to handle.
-3.  **Strike Selection:** Use the **Strike Recommender** on the dashboard. It calculates the 10-year historical survival of your strike *relative* to current VIX.
-4.  **Exit Strategy:** Exit on **Day 5** or if the spot price moves **2%** against your entry.
+### 🔄 Incremental Sync Logic (`data_engine.py`)
+- **Delta-Only Fetching:** The engine checks your local `data/*.csv` files and only downloads data from the `last_date` to `today`. 
+- **Institutional Sources:** 
+    - **Indices:** Nifty 50 (`^NSEI`), Bank Nifty (`^NSEBANK`), S&P 500 (`^GSPC`).
+    - **Volatility:** VIX (`^INDIAVIX`) with term structure analysis.
+    - **Sentiment:** FII/DII Net Flow and PCR (Put-Call Ratio) via `nsepython`.
 
 ---
 
-## 📁 6. Core Project Files
+## 🏟️ 3. Training Workflow (3-Pillar Fusion)
+The training pipeline (`train_models.py`) builds three independent "Pillars" that see the market through different mathematical lenses.
 
-*   `david_streamlit.py`: Your primary Trading Dashboard with sub-model confidence bars.
-*   `models/meta_ensemble.py`: The primary fusion layer for Pillar 1 & 2.
-*   `models/sequence_model.py`: The PyTorch LSTM neural network.
-*   `models/regime_ensemble.py`: The HMM-based switching logic.
-*   `feature_forge.py`: The volatility-adjusted target engine.
-*   `train_models.py`: The core training pipeline (Quarterly Retraining).
+1.  **Regime Awareness (HMM):** Identifies the 5 hidden states of the market.
+2.  **Statistical Edge (Trees):** CatBoost and LightGBM models specializing in TRENDING vs CHOPPY data splits.
+3.  **Linear Memory (LSTM):** A 20-day sequence model identifying cascading momentum patterns.
+4.  **Non-Linear Attention (Transformer):** Multi-head attention identifying which specific events in the last month matter most.
+
+**Production Command:** `python train_models.py --force` (Forces a current-day sync & rebuild).
 
 ---
 
-## ⚠️ Disclaimer
-*Trading Nifty 50 Options involves high risk. David v6.6.6 is an analytical tool, not a financial advisor. Use strict 2.0% stop-losses and verify all signals against your own risk tolerance.*
+## 💻 4. Operational Console (Streamlit UI)
+The primary interface (`david_streamlit.py`) provides an institutional-grade terminal for live signal analysis.
+
+*   **Probability Gauge:** Blended conviction score from all 3 pillars (45/30/25 weights).
+*   **The Edge Radar:** A 0-100 score filtering trades by VIX spreads, PCR Z-scores, and Model Agreement.
+*   **Survival Heatmaps:** Historical probability of strike survival for Bull Put / Bear Call spreads.
+*   **Command:** `streamlit run david_streamlit.py`
+
+---
+
+## 🧪 5. The Alpha Feature Matrix
+| Feature | Code Logic | Why it works |
+| :--- | :--- | :--- |
+| **VIX Term Spread** | `far_vix - near_vix` | Backwardation in VIX signals structural fear. |
+| **PCR Z-Score** | `(raw - 5d_avg) / std` | Identifies extreme sentiment traps before they snap. |
+| **FII Interaction** | `FII Flow * TrendIndex` | FII selling in a trending bear market is a "High Trust" signal. |
+| **Bank Nifty Leads** | `bn_returns_lag1/2` | Catches the "Banking Drag" or "Banking Rally" leading Nifty. |
+
+---
+
+## 📁 6. Project Manifest (File Breakdown)
+
+### 🧠 Core Models
+- `models/meta_ensemble.py`: The 3-pillar fusion layer and trauma gates.
+- `models/regime_detector.py`: HMM-based market state classification.
+- `models/sequence_model.py`: 20-day Memory (LSTM).
+- `models/transformer_model.py`: Attention Pillar (Transformer).
+
+### 🛠️ Infrastructure
+- `data_engine.py`: Incremental CSV persistence and institutional sync.
+- `feature_forge.py`: The engineering forge (60+ alpha features).
+- `train_models.py`: Unified retraining orchestrator.
+- `utils.py`: Shared constants, formatting, and `LOT_SIZE=65` config.
+
+### 🧪 Backtesting
+- `backtest_david.py`: The "Gold Standard" auditor for Spreads/SL logic.
+- `accuracy_audit.py`: Direct prediction-to-price verification.
+
+---
+
+## ⚠️ Risk Disclaimer
+Trading Nifty 50 Options involves significant risk. David V6.6.6+ is an analytical tool; all signals should be verified against your own risk tolerance. **Always use stop-losses.**

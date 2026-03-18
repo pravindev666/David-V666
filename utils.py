@@ -60,6 +60,7 @@ LOT_SIZE = 65  # Nifty lot size (Updated to 65 as per latest NSE standards)
 UP = "UP"
 DOWN = "DOWN"
 SIDEWAYS = "SIDEWAYS"
+HOLD = "HOLD"
 
 # v6.6.6 Mode
 BINARY_MODE = True

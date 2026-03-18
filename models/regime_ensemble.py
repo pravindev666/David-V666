@@ -71,9 +71,13 @@ class RegimeAwareEnsemble:
         group = self._get_regime_group(label)
         
         if group == "TRENDING":
-            return self.model_trending.predict(df_row)
+            res = self.model_trending.predict(df_row)
         else:
-            return self.model_choppy.predict(df_row)
+            res = self.model_choppy.predict(df_row)
+        
+        # Add regime to the result dict for the MetaEnsemble to see
+        res["regime"] = label
+        return res
 
     def save(self, path=None):
         if path is None:

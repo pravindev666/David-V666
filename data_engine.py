@@ -232,7 +232,7 @@ def load_all_data():
         if col in df.columns:
             df[col] = df[col].ffill().fillna(0 if "net" in col else 1.0 if "pcr" in col else df[col].mean() if not df[col].empty else 0)
     
-    df = df.sort_values("date").reset_index(drop=True)
+    df = df.sort_values("date").set_index("date")
     df = df.dropna(subset=["close"])
     
     print(f"\n  {C.GREEN}[OK] Merged dataset: {len(df)} trading days (Features: {list(df.columns)}){C.RESET}")

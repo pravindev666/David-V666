@@ -29,22 +29,23 @@ class MetaEnsemble:
         self.attn_model = TransformerModel(seq_length=20)
         
         # V6.6.6+ Blending Weights
-        self.tree_weight = 0.50
+        # V6.6.6+ Plus Blending Weights
+        self.tree_weight = 0.45 
         self.lstm_weight = 0.30
-        self.attn_weight = 0.20
+        self.attn_weight = 0.25
         self.is_trained = False
         
     def train(self, df, feature_cols, verbose=True):
         if verbose:
             print(f"\n{C.header('TRAINING V6.6.6+ META-ENSEMBLE (3 PILLARS)')}")
             
-        print(f"\n{C.CYAN}Step 1/3: Regime-Aware Binary Ensemble (50%){C.RESET}")
+        print(f"\n{C.CYAN}Step 1/3: Regime-Aware Binary Ensemble (45%){C.RESET}")
         self.regime_ensemble.train(df, feature_cols, verbose=verbose)
         
         print(f"\n{C.CYAN}Step 2/3: LSTM Sequence Model (30%){C.RESET}")
         self.sequence_model.train(df, feature_cols, verbose=verbose)
         
-        print(f"\n{C.CYAN}Step 3/3: Transformer Attention Model (20%){C.RESET}")
+        print(f"\n{C.CYAN}Step 3/3: Transformer Attention Model (25%){C.RESET}")
         self.attn_model.train(df, feature_cols, verbose=verbose)
         
         self.is_trained = True
@@ -60,6 +61,22 @@ class MetaEnsemble:
         lstm_p = self.sequence_model.predict(df)
         attn_p = self.attn_model.predict(df)
         
+        # ─── HARD REGIME GATE (v6.6.6+ Sniper Patch) ───
+        # If HMM identifies a 'STRONG' (Trauma) regime, refuse to trade.
+        regime = tree_p.get("regime", "")
+        if "STRONG" in regime.upper():
+            return {
+                "direction": "HOLD",
+                "confidence": 0.0,
+                "prob_up": 0.5,
+                "prob_down": 0.5,
+                "regime": regime,
+                "reason": "Hard Gate: Trauma Regime Detected",
+                "tree_conf": max(tree_p["prob_up"], tree_p["prob_down"]),
+                "lstm_conf": max(lstm_p["prob_up"], lstm_p["prob_down"]),
+                "attn_conf": max(attn_p["prob_up"], attn_p["prob_down"])
+            }
+
         # Blend probabilities
         p_up = (tree_p["prob_up"] * self.tree_weight) + \
                (lstm_p["prob_up"] * self.lstm_weight) + \
@@ -71,8 +88,8 @@ class MetaEnsemble:
         
         # Normalize
         total = p_up + p_down
-        p_up /= total
-        p_down /= total
+        p_up /= (total if total > 0 else 1)
+        p_down /= (total if total > 0 else 1)
         
         # Decide direction
         direction = UP if p_up > p_down else DOWN
@@ -83,7 +100,7 @@ class MetaEnsemble:
             "confidence": confidence,
             "prob_up": p_up,
             "prob_down": p_down,
-            "prob_sideways": 0.0,
+            "regime": regime,
             "tree_conf": max(tree_p["prob_up"], tree_p["prob_down"]),
             "lstm_conf": max(lstm_p["prob_up"], lstm_p["prob_down"]),
             "attn_conf": max(attn_p["prob_up"], attn_p["prob_down"])

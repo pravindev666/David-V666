@@ -66,9 +66,12 @@ class RegimeAwareEnsemble:
         
         self.is_trained = True
         
-    def predict(self, df_row):
-        label, _, _ = self.regime_detector.get_current_regime(df_row)
+    def predict(self, df):
+        label, _, _ = self.regime_detector.get_current_regime(df)
         group = self._get_regime_group(label)
+        
+        # We only need the last row for the actual ML classifier
+        df_row = df.iloc[-1:]
         
         if group == "TRENDING":
             res = self.model_trending.predict(df_row)

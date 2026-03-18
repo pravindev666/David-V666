@@ -57,7 +57,7 @@ class MetaEnsemble:
         if not self.is_trained:
             raise RuntimeError("Meta-Ensemble not trained!")
             
-        tree_p = self.regime_ensemble.predict(df.iloc[-1:]) 
+        tree_p = self.regime_ensemble.predict(df) 
         lstm_p = self.sequence_model.predict(df)
         attn_p = self.attn_model.predict(df)
         
@@ -95,12 +95,24 @@ class MetaEnsemble:
         direction = UP if p_up > p_down else DOWN
         confidence = max(p_up, p_down)
             
+        # Extract Whipsaw Score from current dataframe
+        w_score = df["whipsaw_score"].iloc[-1] if "whipsaw_score" in df.columns else 0
+        w_lag1 = df["whipsaw_score_lag1"].iloc[-1] if "whipsaw_score_lag1" in df.columns else 0
+        
+        # Determine Whipsaw Label
+        if w_score < 30: w_label = "SMOOTH"
+        elif w_score < 60: w_label = "BUMPY"
+        else: w_label = "STORM"
+            
         return {
             "direction": direction,
             "confidence": confidence,
             "prob_up": p_up,
             "prob_down": p_down,
             "regime": regime,
+            "whipsaw_score": w_score,
+            "whipsaw_lag": w_lag1,
+            "whipsaw_label": w_label,
             "tree_conf": max(tree_p["prob_up"], tree_p["prob_down"]),
             "lstm_conf": max(lstm_p["prob_up"], lstm_p["prob_down"]),
             "attn_conf": max(attn_p["prob_up"], attn_p["prob_down"])

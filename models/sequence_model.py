@@ -138,7 +138,6 @@ class SequenceModel:
             raise RuntimeError("SequenceModel not trained!")
             
         if len(df) < self.seq_length:
-            print(f"{C.RED}Not enough data points for LSTM (need {self.seq_length}){C.RESET}")
             return {"direction": BINARY_MAP[0], "confidence": 0.5, "prob_up": 0.5, "prob_down": 0.5}
             
         df_seq = df.iloc[-self.seq_length:]

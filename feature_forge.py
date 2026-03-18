@@ -191,7 +191,40 @@ def engineer_features(df, target_horizon=5):
     df["day_of_week"] = date_series.dt.dayofweek / 4.0
     df["month"] = date_series.dt.month / 12.0
     
-    # ... (skipping some logic for brevity in replace, but ensuring it matches)
+    # ═══════════════════════════════════════════════════════════════════════
+    # 9. WHIPSAW DETECTOR (v6.6.6+ Sniper Upgrade)
+    # ═══════════════════════════════════════════════════════════════════════
+    # Rule-based 'Road Quality' score from 0 (Smooth) to 100 (Storm)
+    
+    # helper for individual row calculation (for live predict)
+    def calc_whipsaw(r):
+        score = 0
+        atr_r = r.get('atr_ratio', 0)
+        vov = r.get('vol_of_vol', 0)
+        vix_c = r.get('vix_change', 0)
+        streak = abs(r.get('consec_streak', 0))
+        bb_pos = r.get('bb_position', 0.5)
+
+        # 1. ATR Ratio (Volatility magnitude)
+        if atr_r > 0.015: score += 25  # High daily swings
+        elif atr_r > 0.012: score += 10
+        
+        # 2. Vol of Vol (VIX instability)
+        if vov > 0.02: score += 20
+        
+        # 3. VIX Spike (Fear acceleration)
+        if abs(vix_c) > 0.10: score += 20
+        
+        # 4. Consecutive Streak (Exhaustion/Mean Reversion Risk)
+        if streak >= 4: score += 15
+        
+        # 5. Bollinger Edge (Stretch risk)
+        if bb_pos > 0.95 or bb_pos < 0.05: score += 20
+        
+        return min(100, score)
+
+    df["whipsaw_score"] = df.apply(calc_whipsaw, axis=1)
+    df["whipsaw_score_lag1"] = df["whipsaw_score"].shift(1)
 
     # ═══════════════════════════════════════════════════════════════════════
     # TARGET VARIABLE — UPGRADED v6.6.6+ (Percentile Based)

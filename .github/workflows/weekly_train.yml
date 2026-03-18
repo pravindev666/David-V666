@@ -1,0 +1,58 @@
+name: Weekly AI Model Training
+
+on:
+  schedule:
+    # Runs every Saturday at 2:00 AM UTC (7:30 AM IST)
+    - cron: '0 2 * * 6'
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  train-models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # torch is REQUIRED — LSTM and Transformer models will crash without it
+          pip install pandas numpy yfinance scikit-learn catboost lightgbm hmmlearn scipy torch
+
+      - name: Sync Latest Data Before Training
+        run: |
+          python data_engine.py
+
+      - name: Train All Models
+        run: |
+          python train_models.py
+
+      - name: Commit and Push Updated Models
+        run: |
+          git config --global user.name "David AI Bot"
+          git config --global user.email "bot@david-ml.com"
+
+          git add data/*.csv
+          git add saved_models/*.pkl
+          git add saved_models/*.pt
+          git add saved_models/last_trained.txt
+
+          if git diff --staged --quiet; then
+            echo "No model changes to commit"
+          else
+            git commit -m "Auto-train: Weekly ML update $(date +'%Y-%m-%d')"
+            git push
+          fi

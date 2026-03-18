@@ -22,6 +22,8 @@ from utils import C, MODEL_DIR
 import json
 from models.regime_detector import RegimeDetector
 
+from datetime import datetime, timedelta
+
 def run_training_pipeline(force=False, cutoff=None):
     print(f"\n{C.header('AI MODEL RETRAINING PIPELINE (V6.6.6+ Sniper)')}")
     print(f"{'═'*50}")
@@ -31,12 +33,15 @@ def run_training_pipeline(force=False, cutoff=None):
     df_raw = load_all_data()
     df, feature_cols = engineer_features(df_raw)
 
-    # 1.5 Apply Cutoff if specified
-    if cutoff:
-        cutoff_ts = pd.to_datetime(cutoff)
-        print(f"  {C.YELLOW}Applying Training Cutoff: {cutoff_ts.date()}{C.RESET}")
-        df = df[df.index <= cutoff_ts].copy()
-        print(f"  Training Samples: {len(df)}")
+    # 1.5 Apply Cutoff (Lookahead Protection)
+    if not cutoff:
+        # Default: 1-day lookahead guard (never train on today's partial data)
+        cutoff = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+    
+    cutoff_ts = pd.to_datetime(cutoff)
+    print(f"  {C.YELLOW}Applying Training Cutoff: {cutoff_ts.date()}{C.RESET}")
+    df = df[df.index <= cutoff_ts].copy()
+    print(f"  Training Samples: {len(df)}")
 
     # 2. Check for Regime Change
     metadata_path = os.path.join(MODEL_DIR, "train_metadata.json")
@@ -55,7 +60,7 @@ def run_training_pipeline(force=False, cutoff=None):
 
     print(f"  {C.YELLOW}Last Train Regime: {last_regime} | Current Regime: {current_regime}{C.RESET}")
 
-    if not force and not cutoff and current_regime == last_regime:
+    if not force and current_regime == last_regime:
         print(f"\n{C.GREEN}✅ No regime change detected. Skipping retraining.{C.RESET}")
         return
 
@@ -65,7 +70,7 @@ def run_training_pipeline(force=False, cutoff=None):
     regime.train(df)
     regime.save()
 
-    # 4. Train Meta-Ensemble Classifier (45% Tree / 30% LSTM / 25% Transformer)
+    # 4. Train Meta-Ensemble Classifier
     print(f"\n{C.CYAN}[STEP 3/5] Training Meta-Ensemble Fusion (3 Pillars)...{C.RESET}")
     meta_ensemble = MetaEnsemble(regime)
     meta_ensemble.train(df, feature_cols)
@@ -77,12 +82,16 @@ def run_training_pipeline(force=False, cutoff=None):
     rp.train(df, feature_cols)
     rp.save()
 
-    # Save Metadata
+    # 6. Save Metadata & Freshness Indicator
     with open(metadata_path, "w") as f:
         json.dump({
             "last_train_regime": current_regime,
-            "last_train_cutoff": cutoff
+            "last_train_cutoff": cutoff,
+            "last_train_date": datetime.now().strftime('%Y-%m-%d %H:%M UTC')
         }, f)
+    
+    with open(os.path.join(MODEL_DIR, 'last_trained.txt'), 'w') as f:
+        f.write(datetime.now().strftime('%Y-%m-%d %H:%M UTC'))
 
     print(f"\n{C.GREEN}✅ RETRAINING COMPLETE (Trigger: {current_regime}){C.RESET}\n")
 

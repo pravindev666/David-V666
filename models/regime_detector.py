@@ -134,21 +134,28 @@ class RegimeDetector:
     
     def get_current_regime(self, df):
         """
-        Predict the regime for the latest observation.
+        Predict the regime for the latest observation using context if available.
         Returns: (regime_label, state_index, state_probabilities)
         """
         if not self.is_trained:
             return "UNKNOWN", -1, {}
         
         available = [f for f in self.hmm_features if f in df.columns]
-        last_obs = df[available].iloc[-1:].values
-        last_scaled = self.scaler.transform(last_obs)
         
-        state = self.hmm.predict(last_scaled)[0]
+        # Scale the entire provided sequence
+        X_seq = df[available].values
+        X_scaled = self.scaler.transform(X_seq)
         
-        # Get posterior probabilities for all states
-        log_prob, posteriors = self.hmm.score_samples(last_scaled)
-        state_probs = posteriors[0]
+        # Predict the sequence of states
+        states = self.hmm.predict(X_scaled)
+        state = states[-1] # Take the last day's state
+        
+        # For diagnostics (if needed)
+        # print(f"[DEBUG] Sequence States: {states} | Final: {state}")
+        
+        # Get posterior probabilities for the last day
+        log_prob, posteriors = self.hmm.score_samples(X_scaled)
+        state_probs = posteriors[-1]
         
         label = self.regime_map.get(state, "UNKNOWN")
         
@@ -159,7 +166,7 @@ class RegimeDetector:
                 prob_dict[lbl] = float(state_probs[s])
         
         return label, state, prob_dict
-    
+
     def get_transition_probabilities(self, current_state):
         """
         Given current state, return the probabilities of transitioning to each regime.

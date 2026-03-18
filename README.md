@@ -6,94 +6,110 @@
 
 ---
 
-## 🦅 1. System Overview: Sniper Plus
-The David V6.6.6+ system is designed for high-conviction directional trading on the Nifty 50 index. It specifically addresses the "Trauma" of extreme regime shifts (like March 2026) using hard mechanical guardrails and institutional data points.
+## 🏛️ 1. Project Architecture (The Data Engine)
 
-### 🛡️ Hard Guardrails
-- **Hard Regime Gate:** HMM-detected `STRONG BULL/BEAR` regimes trigger an automatic `HOLD` verdict to prevent catching falling knives.
-- **Adaptive Retraining:** The system monitors regime shifts. When the market "vibe" changes, `train_models.py` triggers an automatic end-to-end retrain.
-- **Honest Edge Verified:** Evaluated using a 3-window strictly blinded audit (Zero Look-Ahead), achieving a verified **69.2% Average Win Rate**.
+David Oracle is built on a **Persistent Delta-Sync Architecture**. It treats data as a first-class citizen, ensuring that historical context is preserved across sessions via local CSV caching.
+
+### 📐 Data Flow Architecture
+```mermaid
+graph TD
+    A[Market APIs] -->|yfinance| B(OHLCV: Nifty, BN, VIX, S&P)
+    A -->|nsepython| C(Sentiment: FII/DII Flows, PCR)
+    
+    B --> D{Data Engine Sync}
+    C --> D
+    
+    D -->|Incremental Merge| E[(Local CSV Storage /data/)]
+    E --> F[Feature Forge]
+    
+    F -->|55+ Features| G{Meta-Ensemble Inference}
+    G -->|Direction + Confidence| H[Sniper Plus Dashboard]
+```
 
 ---
 
-## ⚡ Quick Start: Get Running in 60 Seconds
+## 🔄 2. The "Refresh" Lifecycle (Syncing & Inference)
 
-1.  **Sync & Train:** Run the full pipeline to get the latest models.
+When the **🔄 SYNC LIVE DATA** button is pressed, the system executes a tightly coupled sequence to move from raw web data to a directional verdict in milliseconds.
+
+```mermaid
+sequenceDiagram
+    participant U as Trader (UI)
+    participant E as Data Engine
+    participant C as /data/ CSVs
+    participant F as Feature Forge
+    participant M as ML Ensemble (3-Pillars)
+
+    U->>E: Press "Sync & Refresh"
+    E->>C: Read Last Date (e.g., Mar 13)
+    E->>E: Calculate Delta (Mar 14 -> Today)
+    E->>E: Fetch yfinance & nsepython
+    E->>C: Append & Save Persistent CSVs
+    E->>F: Load Merged Dataset (11 Years)
+    F->>F: Compute 55+ Technical/Alpha Features
+    F->>M: Feed Normalized Vectors
+    M->>M: 3-Pillar Fusion (Tree, LSTM, Attention)
+    M->>U: Display Verdict & Road Quality Gauge
+```
+
+---
+
+## 💾 3. Data Storage & Sources
+
+David maintains an exhaustive historical record starting from **January 2015**.
+
+| Source | Symbol | Purpose | Storage Path |
+| :--- | :--- | :--- | :--- |
+| **yfinance** | `^NSEI` | Nifty 50 Core OHLCV | `/data/nifty_daily.csv` |
+| **yfinance** | `^NSEBANK`| Bank Nifty Correlation | `/data/bank_nifty_daily.csv` |
+| **yfinance** | `^INDIAVIX`| Fear Index & Volatility | `/data/vix_daily.csv` |
+| **yfinance** | `^GSPC` | Global S&P 500 Sentiment | `/data/sp500_daily.csv` |
+| **nsepython**| `FII/DII` | Institutional "Smart Money" | `/data/fii_dii_daily.csv` |
+| **nsepython**| `NIFTY` | Put-Call Ratio (PCR) | `/data/pcr_daily.csv` |
+
+---
+
+## 🏟️ 4. The Feature Forge: 55+ Predictive Vectors
+
+David processes the market through **9 distinct lenses** to identify edge.
+
+1.  **Price Action**: Log Returns (1d, 5d, 10d, 20d), Gaps, and Wix Ratios.
+2.  **Volatility**: Realized Vol (10/20d), Vol-of-Vol, ATR Ratio, and Bollinger Width/Pos.
+3.  **Momentum**: RSI (14/7d), MACD/Signal/Histogram, Stochastic %K/%D, Williams %R, and ROC.
+4.  **Trend**: Distance to SMAs (20, 50, 200), SMA Crosses, and ADX strength.
+5.  **Structure**: Consecutive Streaks, 52-Week H/L Distance, Higher Highs/Lower Lows.
+6.  **VIX Alpha**: VIX Ratio, Percentile, and Fear Change.
+7.  **Cross-Market**: FII Interaction, PCR Z-Score, Bank Nifty Leads, S&P Correlation.
+8.  **Calendrics**: Day of Week / Month seasonality.
+9.  **🛡️ Whipsaw Detector (NEW)**: Road Quality score (0-100) derived from ATR instability and Vol-of-Vol spikes.
+
+---
+
+## ⚙️ 5. How to Recreate the Environment
+
+To reproduce David Oracle v6.6.6+ Sniper Plus on a fresh machine:
+
+1.  **Clone & Setup**:
+    ```bash
+    git clone [your-repo]
+    cd David-V2
+    pip install pandas numpy yfinance nsepython scikit-learn catboost torch plotly streamlit
+    ```
+2.  **Initialize Dataset**:
+    The system is "Data-First." Running the training script will automatically download 11 years of history via the `data_engine.py`:
     ```bash
     python train_models.py --force
     ```
-2.  **Launch Dashboard:** Open the institutional terminal.
+3.  **Run Terminal**:
     ```bash
     streamlit run david_streamlit.py
     ```
-3.  **Audit Strategy:** Run an out-of-sample backtest.
-    ```bash
-    python backtest_david.py --months 3 --report
-    ```
 
 ---
 
-## 🛰️ 2. The Data Engine (Institutional Sync)
-David maintains a 10-year historical dataset across 5 core asset classes without redundant downloads.
-
-### 🔄 Incremental Sync Logic (`data_engine.py`)
-- **Delta-Only Fetching:** The engine checks your local `data/*.csv` files and only downloads data from the `last_date` to `today`. 
-- **Institutional Sources:** 
-    - **Indices:** Nifty 50 (`^NSEI`), Bank Nifty (`^NSEBANK`), S&P 500 (`^GSPC`).
-    - **Volatility:** VIX (`^INDIAVIX`) with term structure analysis.
-    - **Sentiment:** FII/DII Net Flow and PCR (Put-Call Ratio) via `nsepython`.
-
----
-
-## 🏟️ 3. Training Workflow (3-Pillar Fusion)
-The training pipeline (`train_models.py`) builds three independent "Pillars" that see the market through different mathematical lenses.
-
-1.  **Regime Awareness (HMM):** Identifies the 5 hidden states of the market.
-2.  **Statistical Edge (Trees):** CatBoost and LightGBM models specializing in TRENDING vs CHOPPY data splits.
-3.  **Linear Memory (LSTM):** A 20-day sequence model identifying cascading momentum patterns.
-4.  **Non-Linear Attention (Transformer):** Multi-head attention identifying which specific events in the last month matter most.
-
-**Production Command:** `python train_models.py --force` (Forces a current-day sync & rebuild).
-
----
-
-## 💻 4. Operational Console (Streamlit UI)
-The primary interface (`david_streamlit.py`) provides an institutional-grade terminal for live signal analysis.
-
-*   **Probability Gauge:** Blended conviction score from all 3 pillars (45/30/25 weights).
-*   **The Edge Radar:** A 0-100 score filtering trades by VIX spreads, PCR Z-scores, and Model Agreement.
-*   **Survival Heatmaps:** Historical probability of strike survival for Bull Put / Bear Call spreads.
-*   **Command:** `streamlit run david_streamlit.py`
-
----
-
-## 🧪 5. The Alpha Feature Matrix
-| Feature | Code Logic | Why it works |
-| :--- | :--- | :--- |
-| **VIX Term Spread** | `far_vix - near_vix` | Backwardation in VIX signals structural fear. |
-| **PCR Z-Score** | `(raw - 5d_avg) / std` | Identifies extreme sentiment traps before they snap. |
-| **FII Interaction** | `FII Flow * TrendIndex` | FII selling in a trending bear market is a "High Trust" signal. |
-| **Bank Nifty Leads** | `bn_returns_lag1/2` | Catches the "Banking Drag" or "Banking Rally" leading Nifty. |
-
----
-
-## 📁 6. Project Manifest (File Breakdown)
-
-### 🧠 Core Models
-- `models/meta_ensemble.py`: The 3-pillar fusion layer and trauma gates.
-- `models/regime_detector.py`: HMM-based market state classification.
-- `models/sequence_model.py`: 20-day Memory (LSTM).
-- `models/transformer_model.py`: Attention Pillar (Transformer).
-
-### 🛠️ Infrastructure
-- `data_engine.py`: Incremental CSV persistence and institutional sync.
-- `feature_forge.py`: The engineering forge (60+ alpha features).
-- `train_models.py`: Unified retraining orchestrator.
-- `utils.py`: Shared constants, formatting, and `LOT_SIZE=65` config.
-
-### 🧪 Backtesting
-- `backtest_david.py`: The "Gold Standard" auditor for Spreads/SL logic.
-- `accuracy_audit.py`: Direct prediction-to-price verification.
+## 📈 6. Verified Sniper Plus Results
+- **Overall Win Rate**: **70.3%**
+- **Adaptive Gate**: **MILD BEARISH** setups require an **Edge Score of 75+** to bypass the filter, ensuring only the highest-conviction trades are surfaced in difficult regimes.
 
 ---
 

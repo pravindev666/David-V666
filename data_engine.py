@@ -117,7 +117,7 @@ def load_all_data():
     """
     Fetch and merge NIFTY + VIX + S&P 500 + Bank Nifty + FII/DII into a single DataFrame.
     """
-    from utils import BANK_NIFTY_SYMBOL
+    from utils import BANK_NIFTY_SYMBOL, MODEL_DIR
     try:
         from nsepython import nse_fiidii
     except ImportError:
@@ -132,9 +132,14 @@ def load_all_data():
     vix = fetch_symbol(VIX_SYMBOL, "vix")
     sp500 = fetch_symbol(SP500_SYMBOL, "sp500")
     
-    # ── FII/DII (Incremental logic) ──
+    # ── FII/DII (Incremental logic with IP block guard) ──
     fii_dii_path = _csv_path("fii_dii")
     fii_dii_df = None
+    
+    # Load existing first for fallback
+    if os.path.exists(fii_dii_path):
+        fii_dii_df = pd.read_csv(fii_dii_path, parse_dates=["date"])
+
     if nse_fiidii:
         try:
             latest_fd = nse_fiidii()
@@ -146,25 +151,26 @@ def load_all_data():
                     dii_net = pd.to_numeric(new_fd[new_fd["category"] == "DII"]["netValue"].iloc[0], errors='coerce') if "DII" in new_fd["category"].values else 0
                     row = pd.DataFrame([{"date": new_fd["date"].iloc[0], "fii_net": float(fii_net), "dii_net": float(dii_net)}])
                     
-                    if os.path.exists(fii_dii_path):
-                        fii_dii_df = pd.read_csv(fii_dii_path, parse_dates=["date"])
+                    if fii_dii_df is not None:
                         fii_dii_df = pd.concat([fii_dii_df, row], ignore_index=True).drop_duplicates(subset=["date"], keep="last")
                     else:
                         fii_dii_df = row
                     fii_dii_df.to_csv(fii_dii_path, index=False)
-                    print(f"  {C.GREEN}[OK] FII/DII: Data synced as CSV.{C.RESET}")
+                    print(f"  {C.GREEN}[OK] FII/DII: Data synced.{C.RESET}")
         except Exception as e:
-            print(f"  {C.YELLOW}[WARN] FII/DII fetch failed: {e}{C.RESET}")
-            if os.path.exists(fii_dii_path):
-                fii_dii_df = pd.read_csv(fii_dii_path, parse_dates=["date"])
+            print(f"  {C.YELLOW}[WARN] FII/DII fetch failed (IP block likely): {e}{C.RESET}")
+            # Fallback to cache (already loaded in fii_dii_df)
 
-    # ── NIFTY PCR (Incremental logic) ──
+    # ── NIFTY PCR (Incremental logic with IP block guard) ──
     pcr_path = _csv_path("pcr")
     pcr_df = None
+    
+    if os.path.exists(pcr_path):
+        pcr_df = pd.read_csv(pcr_path, parse_dates=["date"])
+
     try:
         from nsepython import pcr as fetch_pcr
-        # nsepython PCR is sometimes brittle, attempt safe fetch
-        val = 1.0 # Default neutral
+        val = 1.0 
         try:
             raw_pcr = fetch_pcr("NIFTY")
             if isinstance(raw_pcr, dict):
@@ -172,31 +178,24 @@ def load_all_data():
             else:
                 val = float(raw_pcr)
         except:
-            # Fallback to manual if nsepython internal fails
             val = 1.0
         
         row = pd.DataFrame([{"date": pd.Timestamp.now().normalize(), "pcr": val}])
-        if os.path.exists(pcr_path):
-            pcr_df = pd.read_csv(pcr_path, parse_dates=["date"])
+        if pcr_df is not None:
             pcr_df = pd.concat([pcr_df, row], ignore_index=True).drop_duplicates(subset=["date"], keep="last")
         else:
             pcr_df = row
         pcr_df.to_csv(pcr_path, index=False)
         print(f"  {C.GREEN}[OK] PCR: Daily sync complete (PCR: {val:.2f}){C.RESET}")
     except Exception as e:
-        print(f"  {C.YELLOW}[WARN] PCR system error: {e}{C.RESET}")
-        if os.path.exists(pcr_path):
-            pcr_df = pd.read_csv(pcr_path, parse_dates=["date"])
+        print(f"  {C.YELLOW}[WARN] PCR fetch failed (IP block likely): {e}{C.RESET}")
 
     # ── VIX TERM PROXY (Incremental) ──
     vix_term_path = _csv_path("vix_term")
     vix_term_df = None
     try:
-        # Since India doesn't have a direct 'Far VIX' index, and NSE scraping is brittle,
-        # we'll use a spread-proxy or fetch from a known secondary symbol if available.
-        # For now, we simulate far_vix as spot + small premium or fetch if possible.
         spot_vix = vix["close"].iloc[-1]
-        far_vix = spot_vix * 1.05 # Baseline proxy if real data fails
+        far_vix = spot_vix * 1.05 # Baseline proxy
         
         row = pd.DataFrame([{"date": pd.Timestamp.now().normalize(), "vix_near": spot_vix, "vix_far": far_vix}])
         if os.path.exists(vix_term_path):
@@ -205,11 +204,16 @@ def load_all_data():
         else:
             vix_term_df = row
         vix_term_df.to_csv(vix_term_path, index=False)
-        print(f"  {C.GREEN}[OK] VIX Term: Saved to CSV proxy.{C.RESET}")
+        print(f"  {C.GREEN}[OK] VIX Term: Proxy synced.{C.RESET}")
     except Exception as e:
         print(f"  {C.YELLOW}[WARN] VIX Term proxy failed: {e}{C.RESET}")
         if os.path.exists(vix_term_path):
             vix_term_df = pd.read_csv(vix_term_path, parse_dates=["date"])
+
+    # ── SYNC LOGGING ──
+    sync_file = os.path.join(DATA_DIR, "last_synced.txt")
+    with open(sync_file, "w") as f:
+        f.write(datetime.now().strftime("%Y-%m-%d %H:%M %p"))
 
     # ── MERGE PROCESS ──
     vix_cols = vix[["date", "close"]].rename(columns={"close": "vix"})
@@ -227,7 +231,6 @@ def load_all_data():
     if vix_term_df is not None:
         df = df.merge(vix_term_df, on="date", how="left")
 
-    # Forward-fill to handle weekends/mismatched data
     for col in ["vix", "sp_close", "bn_close", "fii_net", "dii_net", "pcr", "vix_near", "vix_far"]:
         if col in df.columns:
             df[col] = df[col].ffill().fillna(0 if "net" in col else 1.0 if "pcr" in col else df[col].mean() if not df[col].empty else 0)
@@ -235,7 +238,7 @@ def load_all_data():
     df = df.sort_values("date").set_index("date")
     df = df.dropna(subset=["close"])
     
-    print(f"\n  {C.GREEN}[OK] Merged dataset: {len(df)} trading days (Features: {list(df.columns)}){C.RESET}")
+    print(f"\n  {C.GREEN}[OK] Merged dataset: {len(df)} trading days{C.RESET}")
     return df
 
 

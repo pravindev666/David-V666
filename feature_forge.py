@@ -152,7 +152,7 @@ def engineer_features(df, target_horizon=5):
         df["vix_change"] = df["vix"].pct_change()
     
     # ═══════════════════════════════════════════════════════════════════════
-    # 7. CROSS-MARKET (5 features) — UPGRADED v6.6.6+
+    # 7. ALPHA CROSS-MARKET (UPGRADED v6.6.6+)
     # ═══════════════════════════════════════════════════════════════════════
     if "sp_close" in df.columns:
         df["sp_return"] = df["sp_close"].pct_change()
@@ -161,17 +161,28 @@ def engineer_features(df, target_horizon=5):
     
     if "bn_close" in df.columns:
         df["bn_return"] = df["bn_close"].pct_change()
-        # Relative strength: Is Bank Nifty leading or lagging?
+        df["bn_return_lag1"] = df["bn_return"].shift(1)
+        df["bn_return_lag2"] = df["bn_return"].shift(2)
         df["bn_nifty_rel"] = df["bn_return"] - df["returns_1d"]
         df["bn_nifty_corr_20"] = df["returns_1d"].rolling(20).corr(df["bn_return"])
 
     if "fii_net" in df.columns:
-        # Ensure numeric
         df["fii_net"] = pd.to_numeric(df["fii_net"], errors='coerce').fillna(0)
         df["dii_net"] = pd.to_numeric(df["dii_net"], errors='coerce').fillna(0)
-        # Normalize institutional flows by a 20-day average
         df["fii_flow_z"] = (df["fii_net"] - df["fii_net"].rolling(20).mean()) / df["fii_net"].rolling(20).std().replace(0, np.nan)
-        df["dii_flow_z"] = (df["dii_net"] - df["dii_net"].rolling(20).mean()) / df["dii_net"].rolling(20).std().replace(0, np.nan)
+        
+        # FII Interaction: Aggression in trending markets
+        # Trend proxy: Distance from SMA20
+        trend_proxy = (df["close"] / df["close"].rolling(20).mean() - 1).abs()
+        df["fii_interaction"] = df["fii_net"] * trend_proxy
+
+    if "pcr" in df.columns:
+        df["pcr_raw"] = df["pcr"]
+        df["pcr_zscore_5d"] = (df["pcr"] - df["pcr"].rolling(5).mean()) / df["pcr"].rolling(5).std().replace(0, np.nan)
+        df["pcr_momentum"] = df["pcr"].diff()
+
+    if "vix_far" in df.columns and "vix_near" in df.columns:
+        df["vix_spread"] = df["vix_far"] - df["vix_near"]
 
     # ═══════════════════════════════════════════════════════════════════════
     # 8. CALENDAR (3 features)
@@ -209,7 +220,12 @@ def engineer_features(df, target_horizon=5):
     df["target_binary_label"] = df["target_binary"].map({0: "UP", 1: "DOWN", 2: "NOISE"})
     
     # Replace infinities and fill NaNs for new features that might be sparse
-    sparse_cols = ["fii_flow_z", "dii_flow_z", "bn_return", "bn_nifty_rel", "bn_nifty_corr_20", "sp_nifty_corr_20", "sp_return_lag1"]
+    sparse_cols = [
+        "fii_flow_z", "dii_flow_z", "fii_interaction",
+        "bn_return", "bn_return_lag1", "bn_return_lag2", "bn_nifty_rel", "bn_nifty_corr_20", 
+        "sp_nifty_corr_20", "sp_return_lag1",
+        "pcr_raw", "pcr_zscore_5d", "pcr_momentum", "vix_spread"
+    ]
     for sc in sparse_cols:
         if sc in df.columns:
             df[sc] = df[sc].fillna(0)
@@ -217,7 +233,7 @@ def engineer_features(df, target_horizon=5):
     # Define feature columns
     exclude = [
         "date", "open", "high", "low", "close", "volume",
-        "vix", "sp_close", "bn_close", "fii_net", "dii_net",
+        "vix", "sp_close", "bn_close", "fii_net", "dii_net", "pcr", "vix_near", "vix_far",
         "future_return", "target", "target_label",
         "target_binary", "target_binary_label",
         "bb_upper", "bb_lower",

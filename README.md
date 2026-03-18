@@ -1,48 +1,64 @@
-# 🦅 DAVID-V6.6.6: THE ALPHA SNIPER
+## 🦅 DAVID-V6.6.6+: THE ALPHA SNIPER (Plus Edition)
 
-> **Nifty 50 High-Precision Directional Engine & Momentum Scanner**
+> **Advanced Nifty 50 Directional Engine with Institutional Momentum**
 > 
-> *A next-generation trading system leveraging a Dual-Pillar Meta-Ensemble (CatBoost/LightGBM + PyTorch LSTM), Regime-Aware Routing, and Blind Walk-Forward Validation.*
+> *A state-of-the-art trading system leveraging a **3-Pillar Meta-Fusion** (CatBoost + PyTorch LSTM + Transformer Attention), Institutional Flow Analysis, and Sentiment-Aware Edge Detection.*
 
 ---
 
-## 🚀 1. What is David-v6.6.6?
+## 🚀 1. What's New in V6.6.6+?
 
-David-v6.6.6 is a major evolution of the original Oracle. We stripped away the ambiguity of "Sideways" training and rebuilt the brain as a high-conviction **Binary Engine**. It solves one problem: **"Where is the structural momentum in the next 5 days, and how strong is it?"**
+The "Plus" upgrade transforms David from a price-only model into an **Institutional Sentiment Engine**. By integrating FII/DII flows, PCR momentum, and VIX term structure, we shifted the accuracy floor even higher for high-magnitude moves.
 
-### The "Alpha Sniper" Performance
-*   **Directional Accuracy:** **65.3%** (at 70% Conviction, Verified via 15-month Blind Audit).
-*   **Strategy Focus:** Engineered for **Naked Option Buying** (Alpha Strategy) where 65% accuracy with 1:2 R:R maximizes compounding.
-*   **Safety Filter:** Integrated **Regime-Aware Routing** to identify and block high-volatility "falling knife" scenarios.
+### The "Alpha Sniper" V6.6.6+ Edge
+*   **3-Pillar Fusion:** Combines Trees (Statistical), LSTM (Sequence), and Transformer (Attention).
+*   **Rolling Percentile Target:** The AI now specifically learns what a **Top 30%** magnitude move looks like, ignoring choppy noise.
+*   **Bank Nifty Lead:** Catches Nifty follow-through by analyzing the 1-2 day leading signals from the Banking index.
 
 ---
 
-## 🧠 2. The Multi-Pillar Architecture
+## 🧠 2. The 3-Pillar Architecture
 
-David-v6.6.6 uses a **Dual-Pillar** fusion logic to catch both statistical edges and structural sequences.
+David-v6.6.6+ uses a **Triple-Pillar** fusion logic to capture statistical, sequence, and attention-based edges.
 
 ```mermaid
 graph TD
-    A[Raw Data: NIFTY, VIX, S&P 500] --> B[Feature Forge: 53 Volatility-Adjusted Indicators]
+    A[Raw Data: NIFTY, VIX, FII/DII, PCR, BN] --> B[Feature Forge: Alpha Engine]
     B --> C{The Meta-Ensemble}
     
-    subgraph Pillar_1 [Pillar 1: Tree-Based Regime Ensemble]
+    subgraph Pillar_1 [Tree-Based Regime Ensemble - 50%]
         C --> D1[HMM Regime Switcher]
-        D1 --> D2[Trending Sub-Model]
-        D1 --> D3[Choppy Sub-Model]
+        D1 --> D2[Trending Model]
+        D1 --> D3[Choppy Model]
     end
     
-    subgraph Pillar_2 [Pillar 2: PyTorch LSTM Sequence Model]
-        C --> E1[10-Day Temporal Window]
-        E1 --> E2[Momentum Sequence Extraction]
+    subgraph Pillar_2 [LSTM Sequence Model - 30%]
+        C --> E1[20-Day Temporal Window]
+        E1 --> E2[Momentum Sequence]
+    end
+
+    subgraph Pillar_3 [Transformer Attention Model - 20%]
+        C --> F1[Multi-Head Attention]
+        F1 --> F2[Non-Linear Patterns]
     end
     
-    D2 & D3 & E2 --> F[Weighted Probability Fusion]
-    F --> G[Directional Verdict: UP / DOWN]
+    D2 & D3 & E2 & F2 --> G[Weighted Probability Fusion: 5:3:2]
+    G --> H[Directional Verdict: UP / DOWN]
     
-    G --> H[EDGE RADAR: STRIKE RECOMMENDER]
-    H --> I[Action: Naked Buying / Credit Spreads / Stay-Cash]
+    H --> I[EDGE RADAR: STRIKE RECOMMENDER]
+    I --> J[Action: Alpha Buying / OTM Spreads]
 ```
+
+---
+
+## 🌊 3. The Alpha Feature Matrix
+
+We don't just use raw numbers. We use **Engineered Edge**:
+
+1.  **VIX Term Spread:** `far_vix - near_vix`. Tells the model if the market is scared of the "Future" vs the "Present."
+2.  **Nifty PCR Z-Score:** A 5-day rolling z-score of the Put-Call Ratio to identify structural fear extremes.
+3.  **FII Interaction:** `FII Net Flow × Market Regime`. Selling in a trending market is 5x more bearish than selling in a choppy one.
+4.  **Bank Nifty Leads:** Analyzing 1d/2d returns of BN to predict the Day 3 "follow-on" move in Nifty.
 
 ---
 

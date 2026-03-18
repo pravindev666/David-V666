@@ -114,30 +114,34 @@ class BinaryEnsemble:
         fold_scores = {name: [] for name in ["XGBoost", "LightGBM", "CatBoost"]}
         
         for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
+            y_train, y_test = y[train_idx], y[test_idx]
+            
+            # 🛡️ Skip if fold has only 1 class (XGB/LGB need 2)
+            if len(np.unique(y_train)) < 2:
+                continue
+
             fold_scaler = StandardScaler()
             X_train = fold_scaler.fit_transform(X[train_idx])
             X_test = fold_scaler.transform(X[test_idx])
-            y_train, y_test = y[train_idx], y[test_idx]
             
             fold_models = self._build_models()
             
             for name, model in fold_models.items():
                 model.fit(X_train, y_train)
-                # CatBoost objective "Logloss" doesn't output integers from predict sometimes directly depending on shape,
-                # but sklearn-compatible predict generally does for binary class.
+                # ...
                 y_pred = np.round(model.predict(X_test)).astype(int)
                 y_test_clean = y_test.flatten().astype(int)
                 acc = accuracy_score(y_test_clean, y_pred)
                 fold_scores[name].append(acc)
             
             if verbose:
-                accs = " | ".join(f"{n}: {fold_scores[n][-1]:.1%}" for n in fold_scores)
+                accs = " | ".join(f"{n}: {fold_scores[n][-1]:.1%}" for n in fold_scores if len(fold_scores[n]) > 0)
                 print(f"  Fold {fold+1}/5: {accs}")
                 
         # Calculate weights based on CV performance
         for name in fold_scores:
-            avg = np.mean(fold_scores[name])
-            self.validation_scores[name] = avg
+            avg = np.mean(fold_scores[name]) if len(fold_scores[name]) > 0 else 0.5
+            self.validation_scores[name] = max(avg, 0.01)
         
         total_score = sum(self.validation_scores.values())
         for name in self.validation_scores:
@@ -145,6 +149,14 @@ class BinaryEnsemble:
         
         # Train final models on full data
         X_scaled = self.scaler.fit_transform(X)
+        
+        # 🛡️ Final check: if full dataset has only 1 class
+        if len(np.unique(y)) < 2:
+            self.fixed_class = y[0]
+            self.is_trained = True
+            return 1.0
+
+        self.fixed_class = None
         self.models = self._build_models()
         for name, model in self.models.items():
             model.fit(X_scaled, y)
@@ -153,6 +165,11 @@ class BinaryEnsemble:
         return np.mean([np.mean(v) for v in fold_scores.values()])
 
     def predict_proba(self, X_scaled):
+        if hasattr(self, 'fixed_class') and self.fixed_class is not None:
+            probs = np.zeros((X_scaled.shape[0], 2))
+            probs[:, int(self.fixed_class)] = 1.0
+            return probs
+            
         combined_probs = np.zeros((X_scaled.shape[0], 2))
         for name, model in self.models.items():
             probs = model.predict_proba(X_scaled)

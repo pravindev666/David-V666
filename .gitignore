@@ -5,10 +5,8 @@ __pycache__/
 env/
 venv/
 .env
-saved_models/
 catboost_info/
 *.joblib
-*.pkl
 /tmp/
 .gemini/
 .DS_Store

@@ -210,7 +210,7 @@ with st.spinner("🦅 Waking up David..."):
 df = oracle["df"]
 current_price = float(df["close"].iloc[-1])
 vix = float(oracle["df_raw"]["vix"].iloc[-1]) if "vix" in oracle["df_raw"].columns else 15.0
-last_date = df["date"].iloc[-1].strftime("%d %b %Y")
+last_date = df.index[-1].strftime("%d %b %Y")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPER FUNCTIONS
@@ -367,11 +367,39 @@ if nav == "🎯 Dashboard":
 
     # 345: Adaptive Thresholds (Layer 1 Optimization)
     # Raise filter to 80 for MILD BEARISH
-    required_threshold = 80 if "MILD BEAR" in regime_info['regime'].upper() else 60
+    required_threshold = 80 if "MILD BEAR" in regime_info['regime'].upper() else (85 if "MILD BULL" in regime_info['regime'].upper() else 60)
     
     fii_proxy = df["fii_net"].iloc[-1] if "fii_net" in df.columns else 0
     render_snap_grid(current_price, vix, fii_proxy, iv_rank)
     
+    # ── Regime Strategy Logic ──
+    regime_upper = regime_info['regime'].upper()
+    if "MILD BEAR" in regime_upper:
+        regime_strategy = "SELL CALL SPREADS"
+        regime_wr = "88.6%"
+        regime_color = "#3fb950"
+        regime_note = "Primary regime. FII selling is persistent. Full conviction."
+    elif "SIDEWAYS" in regime_upper:
+        regime_strategy = "SELL SPREADS (EITHER SIDE)"
+        regime_wr = "80.9%"
+        regime_color = "#58a6ff"
+        regime_note = "Bread & butter. Smooth theta decay. Normal position sizing."
+    elif "MILD BULL" in regime_upper:
+        regime_strategy = "BUY CALLS ONLY (NO SELLING)"
+        regime_wr = "60.6%"
+        regime_color = "#d29922"
+        regime_note = "⚠️ Weak regime for selling (60.6%). Only BUY calls if Edge ≥ 85."
+    elif "STRONG" in regime_upper:
+        regime_strategy = "NO TRADE — BLOCKED"
+        regime_wr = "N/A"
+        regime_color = "#f85149"
+        regime_note = "Extreme regime. Capital preservation mode. Stay flat."
+    else:
+        regime_strategy = "STANDARD"
+        regime_wr = "75.7%"
+        regime_color = "#8b949e"
+        regime_note = "Default strategy."
+
     col_left, col_right = st.columns([1.8, 1])
     
     with col_left:
@@ -383,6 +411,18 @@ if nav == "🎯 Dashboard":
             reasoning += "Mixed model signals suggest caution."
         render_verdict_panel(pred['direction'], edge_score, trust_label, reasoning)
         
+        # Regime Strategy Card
+        st.markdown(f"""
+        <div class="glass-card">
+            <div class="section-label">Regime Strategy</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:18px; font-weight:700; color:{regime_color};">{regime_strategy}</div>
+                <div style="font-size:11px; padding:3px 10px; border-radius:99px; background:{regime_color}20; color:{regime_color};">WR {regime_wr}</div>
+            </div>
+            <div style="font-size:12px; color:#888; margin-top:6px;">{regime_note}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
         # Whipsaw / Combined Signal
         w_score = pred['whipsaw_score']
         w_lag = pred['whipsaw_lag']
@@ -392,10 +432,12 @@ if nav == "🎯 Dashboard":
             st.error(f"🛑 **STORM — STAY OUT**: Whipsaw score {int(w_score)} is extreme. High chance of being stopped out on noise.")
         elif w_lag >= 60 and w_score < 35:
             st.success(f"✨ **STORM CLEARING**: Volatility is collapsing from extreme levels ({int(w_lag)} → {int(w_score)}). Golden entry window!")
-        elif w_score >= 45: # Raised from 35 as per Layer 1 advice
+        elif w_score >= 45:
             st.warning(f"⚠️ **BUMPY ROAD**: Whipsaw score {int(w_score)}. Expect chop; use half position sizing.")
+        elif "MILD BULL" in regime_upper and edge_score < 85:
+            st.warning(f"⚠️ **BULL TRAP ZONE**: Edge {edge_score} is below 85 in MILD BULLISH. Do NOT sell spreads here. Wait or buy calls only.")
         elif edge_score >= required_threshold and iv_rank >= 40 and day_rating != "SKIP":
-            st.success(f"✅ **FIRE THE TRADE**: Conditions met. Smooth road ({int(w_score)}), High Conviction, and IV Edge.")
+            st.success(f"✅ **FIRE THE TRADE**: {regime_strategy}. Smooth road ({int(w_score)}), High Conviction, IV Edge.")
         else:
             reason = "Waiting for alignment..."
             if edge_score < required_threshold: reason = f"Conviction ({edge_score}) below {required_threshold} for {regime_info['regime']}"
@@ -429,12 +471,14 @@ if nav == "🎯 Dashboard":
         """, unsafe_allow_html=True)
         
         # Checklist
+        is_bull = "MILD BULL" in regime_upper
         checks = [
             (f"Edge ≥ {required_threshold}", f"{edge_score}", edge_score >= required_threshold),
             (f"Day Rating ({day_name})", f"Rating {day_rating}", day_rating != "SKIP"),
             (f"IV Rank Filter", f"{iv_rank}%", iv_rank >= 40),
-            ("Regime Filter", regime_info['regime'], "STRONG" not in regime_info['regime'].upper()),
-            ("Whipsaw Filter", f"Score {int(w_score)}", w_score < 45)
+            ("Regime Filter", regime_info['regime'], "STRONG" not in regime_upper),
+            ("Whipsaw Filter", f"Score {int(w_score)}", w_score < 45),
+            ("Sell Spreads OK?", "NO — BUY ONLY" if is_bull else "YES", not is_bull)
         ]
         render_checklist(checks)
 

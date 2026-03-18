@@ -198,11 +198,31 @@ def engineer_features(df, target_horizon=5):
     # TARGET VARIABLE (NOT a feature — excluded from ML input)
     # ═══════════════════════════════════════════════════════════════════════
     df["future_return"] = df["close"].shift(-target_horizon) / df["close"] - 1
+    
+    # Original 3-class target
     df["target"] = np.where(
         df["future_return"] > DIRECTION_THRESHOLD, 0,   # UP
         np.where(df["future_return"] < -DIRECTION_THRESHOLD, 1, 2)  # DOWN, SIDEWAYS
     )
     df["target_label"] = df["target"].map({0: UP, 1: DOWN, 2: SIDEWAYS})
+    
+    # V6.6.6 Binary Volatility-Adjusted Target
+    # Dynamic threshold based on recent market volatility
+    # realized_vol_20 is annualized. Convert to 5-day vol: vol_5d = val * sqrt(5/252)
+    if "realized_vol_20" in df.columns:
+        vol_5d = df["realized_vol_20"] * np.sqrt(5 / 252)
+        vol_threshold = vol_5d * 0.25  # 0.25 std dev threshold (~0.5% in normal vol)
+    else:
+        vol_threshold = pd.Series([DIRECTION_THRESHOLD] * len(df), index=df.index)
+        
+    vol_threshold = vol_threshold.fillna(DIRECTION_THRESHOLD)
+    
+    # Noise class is 2 (dropped during binary training)
+    df["target_binary"] = np.where(
+        df["future_return"] > vol_threshold, 0,   # UP
+        np.where(df["future_return"] < -vol_threshold, 1, 2)  # DOWN / NOISE
+    )
+    df["target_binary_label"] = df["target_binary"].map({0: "UP", 1: "DOWN", 2: "NOISE"})
     
     # ═══════════════════════════════════════════════════════════════════════
     # CLEANUP
@@ -212,6 +232,7 @@ def engineer_features(df, target_horizon=5):
         "date", "open", "high", "low", "close", "volume",
         "vix", "sp_close",
         "future_return", "target", "target_label",
+        "target_binary", "target_binary_label",  # V6.6.6 binary targets
         "bb_upper", "bb_lower",  # Absolute prices, not features
         "sma_20", "sma_50", "sma_200",  # Absolute prices
         "consec_up",  # Intermediate calc

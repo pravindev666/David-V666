@@ -1,8 +1,8 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║              DAVID PROPHETIC ORACLE v1.0                         ║
+║              DAVID PROPHETIC ORACLE v6.6.6                       ║
 ║         Nifty Absolute Direction Prediction Engine               ║
-║    XGBoost + LightGBM + CatBoost + HMM Ensemble                 ║
+║    Regime-Aware Meta-Ensemble (Trees + PyTorch LSTM)             ║
 ╚══════════════════════════════════════════════════════════════════╝
 
 Main interactive CLI application.
@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils import C, banner, separator, format_inr, UP, DOWN, SIDEWAYS
 from data_engine import load_all_data
 from feature_forge import engineer_features, get_target_distribution
-from models.ensemble_classifier import EnsembleClassifier
+from models.meta_ensemble import MetaEnsemble
 from models.regime_detector import RegimeDetector
 from models.range_predictor import RangePredictor
 from models.sr_engine import SREngine
@@ -44,8 +44,8 @@ class DavidOracle:
         self.vix = None
         
         # Models
-        self.ensemble = EnsembleClassifier()
         self.regime = RegimeDetector()
+        self.ensemble = MetaEnsemble(self.regime)
         self.range_pred = RangePredictor()
         self.sr_engine = SREngine()
         
@@ -75,17 +75,17 @@ class DavidOracle:
         # 3. Train or load models
         separator("MODEL TRAINING")
         
-        if not force_retrain and self.ensemble.load():
-            print(f"  {C.GREEN}Ensemble loaded from cache{C.RESET}")
-        else:
-            self.ensemble.train(self.df, self.feature_cols)
-            self.ensemble.save()
-        
         if not force_retrain and self.regime.load():
             print(f"  {C.GREEN}Regime detector loaded from cache{C.RESET}")
         else:
             self.regime.train(self.df)
             self.regime.save()
+            
+        if not force_retrain and self.ensemble.load():
+            print(f"  {C.GREEN}Ensemble loaded from cache{C.RESET}")
+        else:
+            self.ensemble.train(self.df, self.feature_cols)
+            self.ensemble.save()
         
         if not force_retrain and self.range_pred.load():
             print(f"  {C.GREEN}Range predictor loaded from cache{C.RESET}")
@@ -146,7 +146,10 @@ class DavidOracle:
         print(f"\n  {C.BOLD}Probability Breakdown:{C.RESET}")
         print(f"    UP:       {C.pct(pred['prob_up']*100)}")
         print(f"    DOWN:     {C.pct(pred['prob_down']*100)}")
-        print(f"    SIDEWAYS: {C.pct(pred['prob_sideways']*100)}")
+        
+        print(f"\n  {C.DIM}Sub-Model Confidences:{C.RESET}")
+        print(f"    Tree Ensemble: {C.pct(pred.get('tree_conf', 0.5)*100)}")
+        print(f"    LSTM Sequence: {C.pct(pred.get('lstm_conf', 0.5)*100)}")
         
         # Regime context
         print(f"\n  {C.BOLD}═══ REGIME CONTEXT ═══{C.RESET}")
@@ -357,11 +360,11 @@ class DavidOracle:
         self.df, self.feature_cols = engineer_features(self.df_raw)
         self.current_price = float(self.df["close"].iloc[-1])
         
-        self.ensemble.train(self.df, self.feature_cols)
-        self.ensemble.save()
-        
         self.regime.train(self.df)
         self.regime.save()
+        
+        self.ensemble.train(self.df, self.feature_cols)
+        self.ensemble.save()
         
         self.range_pred.train(self.df, self.feature_cols)
         self.range_pred.save()

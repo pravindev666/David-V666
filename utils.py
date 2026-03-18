@@ -60,6 +60,9 @@ UP = "UP"
 DOWN = "DOWN"
 SIDEWAYS = "SIDEWAYS"
 
+# v6.6.6 Mode
+BINARY_MODE = True
+
 # Regime labels (5-state)
 REGIME_LABELS = {
     0: "STRONG BULLISH",

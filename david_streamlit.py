@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils import C, UP, DOWN, SIDEWAYS, NIFTY_SYMBOL, MODEL_DIR
 from data_engine import load_all_data
 from feature_forge import engineer_features
-from models.ensemble_classifier import EnsembleClassifier
+from models.meta_ensemble import MetaEnsemble
 from models.regime_detector import RegimeDetector
 from models.range_predictor import RangePredictor
 from models.sr_engine import SREngine
@@ -26,7 +26,7 @@ from analyzers.bounce_analyzer import BounceAnalyzer
 # PAGE CONFIG
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="David Oracle v1.0",
+    page_title="David Oracle v6.6.6",
     page_icon="🦅",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -302,22 +302,6 @@ def load_oracle():
     df_raw = load_all_data()
     df, features = engineer_features(df_raw)
 
-    # --- Ensemble Classifier ---
-    ensemble = EnsembleClassifier()
-    try:
-        if not ensemble.load():
-            ensemble.train(df, features)
-            ensemble.save()
-    except Exception as e:
-        print(f"  [WARN] Ensemble pkl incompatible ({e}), retraining...")
-        import os as _os
-        pkl_path = _os.path.join(MODEL_DIR, "ensemble_classifier.pkl")
-        if _os.path.exists(pkl_path):
-            _os.remove(pkl_path)
-        ensemble = EnsembleClassifier()
-        ensemble.train(df, features)
-        ensemble.save()
-
     # --- Regime Detector ---
     regime = RegimeDetector()
     try:
@@ -333,6 +317,22 @@ def load_oracle():
         regime = RegimeDetector()
         regime.train(df)
         regime.save()
+
+    # --- Meta Ensemble Classifier (v6.6.6) ---
+    ensemble = MetaEnsemble(regime)
+    try:
+        if not ensemble.load():
+            ensemble.train(df, features)
+            ensemble.save()
+    except Exception as e:
+        print(f"  [WARN] MetaEnsemble incompatible ({e}), retraining...")
+        import os as _os
+        pkl_path = _os.path.join(MODEL_DIR, "meta_ensemble.pkl")
+        if _os.path.exists(pkl_path):
+            _os.remove(pkl_path)
+        ensemble = MetaEnsemble(regime)
+        ensemble.train(df, features)
+        ensemble.save()
 
     # --- Range Predictor ---
     range_pred = RangePredictor()
@@ -428,12 +428,11 @@ def render_regime_bar(current_regime):
 </div>"""
     return f'<div class="regime-bar">{dots_html}</div>'
 
-def render_prob_bars(prob_up, prob_down, prob_side):
-    """Render horizontal probability bars."""
+def render_prob_bars(prob_up, prob_down, tree_conf=0.5, lstm_conf=0.5):
+    """Render horizontal probability bars with sub-model confidence."""
     probs = [
         ("UP", prob_up, "#00FF7F"),
         ("DOWN", prob_down, "#FF4B4B"),
-        ("SIDE", prob_side, "#FFD700"),
     ]
     html = ""
     for label, prob, color in probs:
@@ -446,6 +445,24 @@ def render_prob_bars(prob_up, prob_down, prob_side):
     </div>
     <span class="prob-value" style="color:{color};">{pct}%</span>
 </div>"""
+    # Sub-model confidence bars
+    subs = [
+        ("TREES", tree_conf, "#00C8FF"),
+        ("LSTM", lstm_conf, "#DA70D6"),
+    ]
+    html += '<div style="margin-top:12px; border-top:1px solid #222; padding-top:8px;">'
+    html += '<div style="color:#666; font-size:9px; letter-spacing:1px; margin-bottom:6px;">SUB-MODEL CONFIDENCE</div>'
+    for label, conf, color in subs:
+        pct = int(conf * 100)
+        html += f"""
+<div class="prob-row">
+    <span class="prob-label">{label}</span>
+    <div class="prob-bar-track">
+        <div class="prob-bar-fill" style="width:{pct}%; background:{color};"></div>
+    </div>
+    <span class="prob-value" style="color:{color};">{pct}%</span>
+</div>"""
+    html += '</div>'
     return html
 
 def render_whipsaw_meter(chop_prob):
@@ -827,7 +844,7 @@ with st.sidebar:
 
     st.markdown(f"""
 <div style="position:fixed; bottom:20px; font-size:10px; color:#444;">
-David Oracle v1.0 • {len(df)} trading days
+David Oracle v6.6.6 • {len(df)} trading days
 </div>
 """, unsafe_allow_html=True)
 
@@ -959,7 +976,7 @@ if mode == "🎯 Dashboard":
         st.markdown(f"""<div class="glass-card">
 <div class="section-label">PROBABILITY BREAKDOWN</div>
 <div style="margin-top:12px;">
-{render_prob_bars(pred['prob_up'], pred['prob_down'], pred['prob_sideways'])}
+{render_prob_bars(pred['prob_up'], pred['prob_down'], pred.get('tree_conf', 0.5), pred.get('lstm_conf', 0.5))}
 </div>
 </div>""", unsafe_allow_html=True)
 
@@ -1396,7 +1413,6 @@ elif mode == "🎯 Strike Recommender":
 </div>
 <div style="height:20px; border-radius:10px; display:flex; overflow:hidden; margin-bottom:20px;">
 <div style="width:{pred['prob_up']*100}%; background:linear-gradient(90deg, #004d26, #00FF7F); display:flex; align-items:center; padding-left:10px; font-size:10px; font-weight:700;">UP {pred['prob_up']*100:.0f}%</div>
-<div style="width:{pred['prob_sideways']*100}%; background:#FFD700; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#000;">SIDE {pred['prob_sideways']*100:.0f}%</div>
 <div style="width:{pred['prob_down']*100}%; background:linear-gradient(270deg, #8b0000, #FF4B4B); display:flex; align-items:center; justify-content:flex-end; padding-right:10px; font-size:10px; font-weight:700;">DOWN {pred['prob_down']*100:.0f}%</div>
 </div>
 

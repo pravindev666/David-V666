@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from data_engine import load_all_data
 from feature_forge import engineer_features
-from models.ensemble_classifier import EnsembleClassifier
+from models.meta_ensemble import MetaEnsemble
 from models.regime_detector import RegimeDetector
 from models.range_predictor import RangePredictor
 from utils import C
@@ -31,17 +31,18 @@ def run_training_pipeline():
     print(f"\n{C.CYAN}[STEP 2/5] Engineering technical features...{C.RESET}")
     df, feature_cols = engineer_features(df_raw)
 
-    # 3. Train Ensemble Classifier (Directional)
-    print(f"\n{C.CYAN}[STEP 3/5] Training Ensemble Classifier (UP/DOWN/SIDE)...{C.RESET}")
-    ensemble = EnsembleClassifier()
-    ensemble.train(df, feature_cols)
-    ensemble.save()
-
-    # 4. Train Regime Detector (HMM)
-    print(f"\n{C.CYAN}[STEP 4/5] Training 5-State Regime Detector...{C.RESET}")
+    # 3. Train Regime Detector (HMM) - Moved UP because MetaEnsemble needs it
+    print(f"\n{C.CYAN}[STEP 3/5] Training 5-State Regime Detector...{C.RESET}")
     regime = RegimeDetector()
     regime.train(df)
     regime.save()
+
+    # 4. Train Meta-Ensemble Classifier (Directional - V6.6.6)
+    print(f"\n{C.CYAN}[STEP 4/5] Training Meta-Ensemble Fusion V6.6.6...{C.RESET}")
+    # Replace old ensemble with the new binary + sequence meta-ensemble
+    meta_ensemble = MetaEnsemble(regime)
+    meta_ensemble.train(df, feature_cols)
+    meta_ensemble.save()
 
     # 5. Train Range Predictor (Quantile Regression)
     print(f"\n{C.CYAN}[STEP 5/5] Training 7d & 30d Range Predictor...{C.RESET}")

@@ -174,23 +174,35 @@ footer {visibility: hidden;}
 
 @st.cache_resource
 def load_oracle():
+    import os
+    IS_CLOUD = os.path.exists("/mount/src") or os.environ.get("STREAMLIT_SERVER_ADDRESS") is not None
+    
     df_raw = load_all_data()
     df, features = engineer_features(df_raw)
 
     regime = RegimeDetector()
     if not regime.load():
+        if IS_CLOUD:
+            st.error("❌ Regime model not found. Please run training locally and push models to GitHub.")
+            st.stop()
         regime.train(df)
         regime.save()
 
     ensemble = MetaEnsemble(regime)
     if not ensemble.load():
+        if IS_CLOUD:
+            st.error("❌ Ensemble model not found. Please run training locally and push models to GitHub.")
+            st.stop()
         ensemble.train(df, features)
         ensemble.save()
 
     range_pred = RangePredictor()
     if not range_pred.load():
-        range_pred.train(df, features)
-        range_pred.save()
+        if IS_CLOUD:
+            st.warning("⚠️ Range predictor not found. Forecasts unavailable.")
+        else:
+            range_pred.train(df, features)
+            range_pred.save()
 
     return {
         "df_raw": df_raw,

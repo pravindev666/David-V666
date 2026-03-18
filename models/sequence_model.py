@@ -35,7 +35,7 @@ class SequenceNet(nn.Module):
         return out
 
 class SequenceModel:
-    def __init__(self, seq_length=10):
+    def __init__(self, seq_length=20):
         self.seq_length = seq_length
         self.model = None
         self.scaler = StandardScaler()

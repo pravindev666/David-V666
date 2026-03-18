@@ -48,8 +48,9 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONSTANTS
-# ═══════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════# CORE SYMBOLS
 NIFTY_SYMBOL = "^NSEI"
+BANK_NIFTY_SYMBOL = "^NSEBANK"  # Added in v6.6.6+
 VIX_SYMBOL = "^INDIAVIX"
 SP500_SYMBOL = "^GSPC"
 DATA_START_YEAR = 2015

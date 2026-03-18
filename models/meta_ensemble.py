@@ -12,6 +12,7 @@ import pickle
 
 from .regime_ensemble import RegimeAwareEnsemble
 from .sequence_model import SequenceModel
+from .transformer_model import TransformerModel
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,43 +25,49 @@ class MetaEnsemble:
         self.regime_detector = regime_detector
         # Components
         self.regime_ensemble = RegimeAwareEnsemble(self.regime_detector)
-        self.sequence_model = SequenceModel(seq_length=10)
+        self.sequence_model = SequenceModel(seq_length=20)
+        self.attn_model = TransformerModel(seq_length=20)
         
-        # Hardcoded blending based on backtests, or can be dynamic
-        self.tree_weight = 0.60
-        self.lstm_weight = 0.40
+        # V6.6.6+ Blending Weights
+        self.tree_weight = 0.50
+        self.lstm_weight = 0.30
+        self.attn_weight = 0.20
         self.is_trained = False
         
     def train(self, df, feature_cols, verbose=True):
         if verbose:
-            print(f"\n{C.header('TRAINING META-ENSEMBLE FUSION (V6.6.6)')}")
+            print(f"\n{C.header('TRAINING V6.6.6+ META-ENSEMBLE (3 PILLARS)')}")
             
-        print(f"\n{C.CYAN}Step 1/2: Training Component -> Regime-Aware Binary Ensemble{C.RESET}")
+        print(f"\n{C.CYAN}Step 1/3: Regime-Aware Binary Ensemble (50%){C.RESET}")
         self.regime_ensemble.train(df, feature_cols, verbose=verbose)
         
-        print(f"\n{C.CYAN}Step 2/2: Training Component -> LSTM Sequence Model{C.RESET}")
+        print(f"\n{C.CYAN}Step 2/3: LSTM Sequence Model (30%){C.RESET}")
         self.sequence_model.train(df, feature_cols, verbose=verbose)
+        
+        print(f"\n{C.CYAN}Step 3/3: Transformer Attention Model (20%){C.RESET}")
+        self.attn_model.train(df, feature_cols, verbose=verbose)
         
         self.is_trained = True
         
     def predict_today(self, df):
-        """Matches the old EnsembleClassifier API."""
         return self.predict(df)
         
     def predict(self, df):
-        """
-        Pass the full dataframe to satisfy sequence model's window, 
-        and the latest row to satisfy tree models.
-        """
         if not self.is_trained:
             raise RuntimeError("Meta-Ensemble not trained!")
             
-        tree_pred = self.regime_ensemble.predict(df.iloc[-1:]) 
-        lstm_pred = self.sequence_model.predict(df)
+        tree_p = self.regime_ensemble.predict(df.iloc[-1:]) 
+        lstm_p = self.sequence_model.predict(df)
+        attn_p = self.attn_model.predict(df)
         
         # Blend probabilities
-        p_up = (tree_pred["prob_up"] * self.tree_weight) + (lstm_pred["prob_up"] * self.lstm_weight)
-        p_down = (tree_pred["prob_down"] * self.tree_weight) + (lstm_pred["prob_down"] * self.lstm_weight)
+        p_up = (tree_p["prob_up"] * self.tree_weight) + \
+               (lstm_p["prob_up"] * self.lstm_weight) + \
+               (attn_p["prob_up"] * self.attn_weight)
+               
+        p_down = (tree_p["prob_down"] * self.tree_weight) + \
+                 (lstm_p["prob_down"] * self.lstm_weight) + \
+                 (attn_p["prob_down"] * self.attn_weight)
         
         # Normalize
         total = p_up + p_down
@@ -68,54 +75,52 @@ class MetaEnsemble:
         p_down /= total
         
         # Decide direction
-        if p_up > p_down:
-            direction = UP
-            confidence = p_up
-        else:
-            direction = DOWN
-            confidence = p_down
+        direction = UP if p_up > p_down else DOWN
+        confidence = max(p_up, p_down)
             
         return {
             "direction": direction,
             "confidence": confidence,
             "prob_up": p_up,
             "prob_down": p_down,
-            "prob_sideways": 0.0,  # For backward-compatibility with display
-            "tree_conf": max(tree_pred["prob_up"], tree_pred["prob_down"]),
-            "lstm_conf": max(lstm_pred["prob_up"], lstm_pred["prob_down"])
+            "prob_sideways": 0.0,
+            "tree_conf": max(tree_p["prob_up"], tree_p["prob_down"]),
+            "lstm_conf": max(lstm_p["prob_up"], lstm_p["prob_down"]),
+            "attn_conf": max(attn_p["prob_up"], attn_p["prob_down"])
         }
 
     def save(self):
-        # We save sub-models using their own save methods to handle PyTorch state efficiently
         self.regime_ensemble.save()
         self.sequence_model.save()
+        self.attn_model.save()
         
         path = os.path.join(MODEL_DIR, "meta_ensemble.pkl")
         with open(path, "wb") as f:
             pickle.dump({
                 "tree_weight": self.tree_weight,
                 "lstm_weight": self.lstm_weight,
+                "attn_weight": self.attn_weight,
                 "is_trained": self.is_trained
             }, f)
-        print(f"  {C.GREEN}[SAVED] Meta-Ensemble Fusion → {path}{C.RESET}")
+        print(f"  {C.GREEN}[SAVED] V6.6.6+ Meta-Ensemble → {path}{C.RESET}")
         
     def load(self):
-        # First load sub-models
         reg_ok = self.regime_ensemble.load()
         lstm_ok = self.sequence_model.load()
+        attn_ok = self.attn_model.load()
         
-        if not (reg_ok and lstm_ok):
+        if not (reg_ok and lstm_ok and attn_ok):
             return False
             
         path = os.path.join(MODEL_DIR, "meta_ensemble.pkl")
-        if not os.path.exists(path):
-            return False
+        if not os.path.exists(path): return False
             
         with open(path, "rb") as f:
             data = pickle.load(f)
             self.tree_weight = data["tree_weight"]
             self.lstm_weight = data["lstm_weight"]
+            self.attn_weight = data.get("attn_weight", 0.20)
             self.is_trained = data["is_trained"]
             
-        print(f"  {C.GREEN}[LOADED] Meta-Ensemble Fusion from {path}{C.RESET}")
+        print(f"  {C.GREEN}[LOADED] V6.6.6+ Meta-Ensemble from {path}{C.RESET}")
         return True

@@ -9,3 +9,5 @@ hmmlearn
 scipy
 streamlit>=1.45.0
 packaging
+plotly
+torch --index-url https://download.pytorch.org/whl/cpu

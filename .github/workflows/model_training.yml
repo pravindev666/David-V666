@@ -31,7 +31,7 @@ jobs:
           python -m pip install --upgrade pip
 
           # Step 1 — all standard packages from PyPI
-          pip install pandas numpy yfinance scikit-learn catboost lightgbm hmmlearn scipy nsepython
+          pip install pandas numpy yfinance scikit-learn xgboost==2.1.2 catboost lightgbm hmmlearn scipy nsepython
 
           # Step 2 — torch CPU build separately using --extra-index-url
           # --extra-index-url adds PyTorch as a FALLBACK, keeping PyPI as primary

@@ -113,6 +113,43 @@ def fetch_symbol(symbol, name, start_year=DATA_START_YEAR):
         raise RuntimeError(f"Cannot load data for {name}. No cache, no fallback.")
 
 
+def get_live_snapshot():
+    """
+    Fetch the absolute latest market price and VIX at the current moment (1m interval).
+    This ensures the 'Verdict' is based on the current market price, not yesterday's close.
+    """
+    import yfinance as yf
+    from utils import NIFTY_SYMBOL, VIX_SYMBOL, BANK_NIFTY_SYMBOL
+    
+    snapshot = {}
+    try:
+        # Fetch 1-minute data for the last day to get the most recent valid price
+        nifty_live = yf.download(NIFTY_SYMBOL, period="1d", interval="1m", progress=False)
+        if not nifty_live.empty:
+            last_row = nifty_live.iloc[-1]
+            snapshot['close'] = float(last_row['Close'].iloc[0]) if isinstance(last_row['Close'], pd.Series) else float(last_row['Close'])
+            snapshot['open'] = float(last_row['Open'].iloc[0]) if isinstance(last_row['Open'], pd.Series) else float(last_row['Open'])
+            snapshot['high'] = float(last_row['High'].iloc[0]) if isinstance(last_row['High'], pd.Series) else float(last_row['High'])
+            snapshot['low'] = float(last_row['Low'].iloc[0]) if isinstance(last_row['Low'], pd.Series) else float(last_row['Low'])
+            snapshot['volume'] = float(last_row['Volume'].iloc[0]) if isinstance(last_row['Volume'], pd.Series) else float(last_row['Volume'])
+            snapshot['date'] = nifty_live.index[-1].tz_localize(None)
+        
+        vix_live = yf.download(VIX_SYMBOL, period="1d", interval="1m", progress=False)
+        if not vix_live.empty:
+            v_val = vix_live.iloc[-1]['Close']
+            snapshot['vix'] = float(v_val.iloc[0]) if isinstance(v_val, pd.Series) else float(v_val)
+        
+        bn_live = yf.download(BANK_NIFTY_SYMBOL, period="1d", interval="1m", progress=False)
+        if not bn_live.empty:
+            bn_val = bn_live.iloc[-1]['Close']
+            snapshot['bn_close'] = float(bn_val.iloc[0]) if isinstance(bn_val, pd.Series) else float(bn_val)
+            
+    except Exception as e:
+        print(f"  {C.YELLOW}[WARN] Live snapshot failed: {e}{C.RESET}")
+    
+    return snapshot
+
+
 def load_all_data():
     """
     Fetch and merge NIFTY + VIX + S&P 500 + Bank Nifty + FII/DII into a single DataFrame.
@@ -135,10 +172,6 @@ def load_all_data():
         
         if nifty is None:
             raise RuntimeError("No cached Nifty CSV found. Run data sync locally or via GitHub Actions first.")
-        
-        for name, df_check in [("nifty", nifty), ("bank_nifty", bank_nifty), ("vix", vix), ("sp500", sp500)]:
-            if df_check is not None:
-                print(f"  {C.GREEN}[CACHE] {name}: {len(df_check)} rows{C.RESET}")
     else:
         try:
             from nsepython import nse_fiidii
@@ -253,9 +286,40 @@ def load_all_data():
     
     df = df.sort_values("date").set_index("date")
     df = df.dropna(subset=["close"])
+
+    # ── LIVE SNAPSHOT INJECTION ──
+    # If it's a trading day, inject the live 1-minute price as the very last row
+    # This allows the model to see 'at that moment' data.
+    live = get_live_snapshot()
+    if live and 'close' in live:
+        # Check if latest date in DF is already equal to live date
+        last_date = df.index[-1].normalize()
+        live_date = pd.to_datetime(live['date']).normalize()
+        
+        # We only append a NEW row if today isn't already in the daily historical data
+        # Otherwise we replace the last row's values with the live ones
+        new_row = df.iloc[-1:].copy()
+        new_row.index = [pd.to_datetime(live['date'])]
+        for k, v in live.items():
+            if k in new_row.columns:
+                new_row[k] = v
+        
+        if live_date > last_date:
+            df = pd.concat([df, new_row])
+        else:
+            # Update the last row with live data
+            for k, v in live.items():
+                if k in df.columns:
+                    df.iloc[-1, df.columns.get_loc(k)] = v
     
     print(f"\n  {C.GREEN}[OK] Merged dataset: {len(df)} trading days{C.RESET}")
     return df
+
+
+if __name__ == "__main__":
+    df = load_all_data()
+    print(f"\nColumns: {list(df.columns)}")
+    print(df.tail())
 
 
 if __name__ == "__main__":

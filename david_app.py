@@ -348,19 +348,13 @@ with st.sidebar:
     size = get_kelly_size(wr, 1/rr)
     st.metric("Recommended Allocation", f"{size*100:.1f}%")
 
-    if st.button("🔄 Sync Live Data", use_container_width=True):
+    if st.button("🔄 Refresh Analysis", use_container_width=True):
         st.cache_resource.clear()
         st.rerun()
 
-    if st.button("🧠 Train Models", use_container_width=True):
-        import os
-        IS_CLOUD = os.path.exists("/mount/src") or os.environ.get("STREAMLIT_SERVER_ADDRESS") is not None
-        if IS_CLOUD:
-            st.error("❌ Model training is disabled on Cloud. Use GitHub Actions.")
-        else:
-            import subprocess
-            st.warning("Training started in new window! Check your taskbar.")
-            subprocess.Popen("start cmd /c python train_models.py ^& pause", shell=True)
+    st.markdown("---")
+    st.markdown("☁️ **Cloud Mode: ON**")
+    st.markdown("Data and models are managed via GitHub Actions.")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN APP

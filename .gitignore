@@ -11,3 +11,13 @@ catboost_info/
 .gemini/
 .DS_Store
 *.log
+
+# Build artifacts
+build/
+dist/
+*.exe
+*.spec
+*.pyz
+*.pkg
+David_Oracle/
+David-Exe/
